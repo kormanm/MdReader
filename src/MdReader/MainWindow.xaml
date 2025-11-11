@@ -1,0 +1,48 @@
+<Window x:Class="MdReader.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MdReader"
+        mc:Ignorable="d"
+        Title="MdReader" Height="600" Width="900"
+        Loaded="Window_Loaded"
+        Closing="Window_Closing"
+        AllowDrop="True"
+        Drop="Window_Drop">
+    <DockPanel>
+        <!-- Toolbar -->
+        <ToolBar DockPanel.Dock="Top">
+            <Button Name="OpenFileButton" Click="OpenFileButton_Click" ToolTip="Open File">
+                <TextBlock Text="📂 Open"/>
+            </Button>
+            <Button Name="OpenUrlButton" Click="OpenUrlButton_Click" ToolTip="Open URL">
+                <TextBlock Text="🌐 Open URL"/>
+            </Button>
+            <Separator/>
+            <Button Name="ZoomInButton" Click="ZoomInButton_Click" ToolTip="Zoom In">
+                <TextBlock Text="🔍+"/>
+            </Button>
+            <Button Name="ZoomOutButton" Click="ZoomOutButton_Click" ToolTip="Zoom Out">
+                <TextBlock Text="🔍-"/>
+            </Button>
+            <Button Name="ZoomResetButton" Click="ZoomResetButton_Click" ToolTip="Reset Zoom">
+                <TextBlock Text="🔍 100%"/>
+            </Button>
+            <Separator/>
+            <TextBox Name="SearchTextBox" Width="200" KeyDown="SearchTextBox_KeyDown" 
+                     ToolTip="Search (Enter for next, Shift+Enter for previous)"/>
+            <Button Name="SearchNextButton" Click="SearchNextButton_Click" ToolTip="Find Next">
+                <TextBlock Text="⏭ Next"/>
+            </Button>
+            <Button Name="SearchPrevButton" Click="SearchPrevButton_Click" ToolTip="Find Previous">
+                <TextBlock Text="⏮ Previous"/>
+            </Button>
+        </ToolBar>
+
+        <!-- Tab Control -->
+        <TabControl Name="TabControl" SelectionChanged="TabControl_SelectionChanged">
+            <!-- Tabs will be added dynamically -->
+        </TabControl>
+    </DockPanel>
+</Window>
