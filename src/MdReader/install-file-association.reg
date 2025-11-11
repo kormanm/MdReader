@@ -1,0 +1,27 @@
+Windows Registry Editor Version 5.00
+
+; Register MdReader for .md files
+[HKEY_CLASSES_ROOT\.md]
+@="MdReader.MarkdownFile"
+
+[HKEY_CLASSES_ROOT\.markdown]
+@="MdReader.MarkdownFile"
+
+[HKEY_CLASSES_ROOT\MdReader.MarkdownFile]
+@="Markdown Document"
+
+[HKEY_CLASSES_ROOT\MdReader.MarkdownFile\DefaultIcon]
+@="\"C:\\Program Files\\MdReader\\MdReader.exe\",0"
+
+[HKEY_CLASSES_ROOT\MdReader.MarkdownFile\shell\open\command]
+@="\"C:\\Program Files\\MdReader\\MdReader.exe\" \"%1\""
+
+; Add to "Open With" menu
+[HKEY_CLASSES_ROOT\Applications\MdReader.exe]
+
+[HKEY_CLASSES_ROOT\Applications\MdReader.exe\shell\open\command]
+@="\"C:\\Program Files\\MdReader\\MdReader.exe\" \"%1\""
+
+[HKEY_CLASSES_ROOT\Applications\MdReader.exe\SupportedTypes]
+".md"=""
+".markdown"=""
