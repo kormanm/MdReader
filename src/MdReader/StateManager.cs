@@ -44,7 +44,19 @@ public class StateManager
             if (File.Exists(_stateFilePath))
             {
                 var json = File.ReadAllText(_stateFilePath);
-                return JsonConvert.DeserializeObject<AppState>(json);
+                var state = JsonConvert.DeserializeObject<AppState>(json);
+                
+                // Validate deserialized state
+                if (state != null)
+                {
+                    state.OpenFiles ??= new List<string>();
+                    if (state.ActiveTabIndex < -1)
+                    {
+                        state.ActiveTabIndex = -1;
+                    }
+                }
+                
+                return state;
             }
         }
         catch

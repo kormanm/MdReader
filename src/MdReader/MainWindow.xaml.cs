@@ -132,6 +132,19 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Validate file path
+            if (!Path.IsPathFullyQualified(filePath))
+            {
+                filePath = Path.GetFullPath(filePath);
+            }
+
+            // Check if file exists
+            if (!File.Exists(filePath))
+            {
+                MessageBox.Show($"File not found: {filePath}", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // Check if file is already open
             foreach (TabItem existingTab in TabControl.Items)
             {
@@ -157,6 +170,14 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Validate URL format
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            {
+                MessageBox.Show("Invalid URL. Only HTTP and HTTPS URLs are supported.", "Invalid URL", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             // Validate that it's a markdown URL
             if (!url.EndsWith(".md", StringComparison.OrdinalIgnoreCase) &&
                 !url.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase))
@@ -175,7 +196,10 @@ public partial class MainWindow : Window
                 }
             }
 
-            using var httpClient = new HttpClient();
+            using var httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
             var content = await httpClient.GetStringAsync(url);
 
             var fileName = Path.GetFileName(new Uri(url).LocalPath);
