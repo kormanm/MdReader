@@ -1,0 +1,42 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Restore dependencies
+      run: dotnet restore
+      working-directory: ./src/MdReader
+    
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+      working-directory: ./src/MdReader
+    
+    - name: Test
+      run: dotnet test --configuration Release --no-build --verbosity normal
+      working-directory: ./src/MdReader
+      continue-on-error: true
+    
+    - name: Publish
+      run: dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+      working-directory: ./src/MdReader
+    
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MdReader-win-x64
+        path: src/MdReader/bin/Release/net9.0-windows/win-x64/publish/
