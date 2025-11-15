@@ -234,6 +234,7 @@ public partial class MainWindow : Window
         {
             Markdown = markdownContent,
             Margin = new Thickness(10),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             Pipeline = new MarkdownPipelineBuilder()
                 .UseSupportedExtensions()
                 .Build()
