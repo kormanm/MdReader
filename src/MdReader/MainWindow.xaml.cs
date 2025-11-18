@@ -18,7 +18,11 @@ public partial class MainWindow : Window
     private const double ZoomIncrement = 0.1;
     private const double MinZoom = 0.5;
     private const double MaxZoom = 3.0;
+    private const double MarginIncrement = 10.0;
+    private const double MinMargin = 0.0;
+    private const double MaxMargin = 100.0;
     private readonly StateManager _stateManager;
+    private double _currentHorizontalMargin = 10.0;
 
     public MainWindow()
     {
@@ -32,6 +36,9 @@ public partial class MainWindow : Window
         var state = _stateManager.LoadState();
         if (state?.OpenFiles != null)
         {
+            // Restore margin setting
+            _currentHorizontalMargin = state.HorizontalMargin;
+
             foreach (var filePath in state.OpenFiles)
             {
                 if (File.Exists(filePath) || filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) 
@@ -63,7 +70,8 @@ public partial class MainWindow : Window
         var state = new AppState
         {
             OpenFiles = openFiles,
-            ActiveTabIndex = TabControl.SelectedIndex
+            ActiveTabIndex = TabControl.SelectedIndex,
+            HorizontalMargin = _currentHorizontalMargin
         };
 
         _stateManager.SaveState(state);
@@ -233,7 +241,7 @@ public partial class MainWindow : Window
         var viewer = new MarkdownViewer
         {
             Markdown = markdownContent,
-            Margin = new Thickness(10),
+            Margin = new Thickness(_currentHorizontalMargin, 10, _currentHorizontalMargin, 10),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             Pipeline = new MarkdownPipelineBuilder()
                 .UseSupportedExtensions()
@@ -497,5 +505,60 @@ public partial class MainWindow : Window
         {
             // Zoom is already set per viewer
         }
+    }
+
+    private void IncreaseMarginButton_Click(object sender, RoutedEventArgs e)
+    {
+        AdjustMargin(MarginIncrement);
+    }
+
+    private void DecreaseMarginButton_Click(object sender, RoutedEventArgs e)
+    {
+        AdjustMargin(-MarginIncrement);
+    }
+
+    private void AdjustMargin(double delta)
+    {
+        var newMargin = Math.Clamp(_currentHorizontalMargin + delta, MinMargin, MaxMargin);
+        if (Math.Abs(newMargin - _currentHorizontalMargin) < 0.01)
+        {
+            return; // No change
+        }
+
+        _currentHorizontalMargin = newMargin;
+
+        // Update all existing tabs
+        foreach (TabItem tab in TabControl.Items)
+        {
+            if (tab.Content is ScrollViewer scrollViewer &&
+                scrollViewer.Content is MarkdownViewer viewer)
+            {
+                viewer.Margin = new Thickness(_currentHorizontalMargin, 10, _currentHorizontalMargin, 10);
+            }
+        }
+
+        // Save the new margin setting
+        SaveMarginSetting();
+    }
+
+    private void SaveMarginSetting()
+    {
+        var openFiles = new List<string>();
+        foreach (TabItem tab in TabControl.Items)
+        {
+            if (tab.Tag is string filePath)
+            {
+                openFiles.Add(filePath);
+            }
+        }
+
+        var state = new AppState
+        {
+            OpenFiles = openFiles,
+            ActiveTabIndex = TabControl.SelectedIndex,
+            HorizontalMargin = _currentHorizontalMargin
+        };
+
+        _stateManager.SaveState(state);
     }
 }
