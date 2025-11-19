@@ -7,6 +7,7 @@ public class AppState
 {
     public List<string> OpenFiles { get; set; } = new();
     public int ActiveTabIndex { get; set; } = -1;
+    public double HorizontalMargin { get; set; } = 10.0;
 }
 
 public class StateManager

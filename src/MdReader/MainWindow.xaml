@@ -30,6 +30,13 @@
                 <TextBlock Text="🔍 100%"/>
             </Button>
             <Separator/>
+            <Button Name="DecreaseMarginButton" Click="DecreaseMarginButton_Click" ToolTip="Shrink (Decrease Margins)">
+                <TextBlock Text="◀ Shrink"/>
+            </Button>
+            <Button Name="IncreaseMarginButton" Click="IncreaseMarginButton_Click" ToolTip="Stretch (Increase Margins)">
+                <TextBlock Text="▶ Stretch"/>
+            </Button>
+            <Separator/>
             <TextBox Name="SearchTextBox" Width="200" KeyDown="SearchTextBox_KeyDown" 
                      ToolTip="Search (Enter for next, Shift+Enter for previous)"/>
             <Button Name="SearchNextButton" Click="SearchNextButton_Click" ToolTip="Find Next">
