@@ -1,6 +1,17 @@
-# MdReader Architecture
+# Architecture
 
-## Overview
+## Repository Overview
+
+This repository contains two distinct projects:
+
+1. **MdReader** - A Windows desktop application for reading Markdown files
+2. **PolicyActionService** - A RESTful API service for managing policies and actions
+
+---
+
+## MdReader Desktop Application
+
+### Overview
 MdReader is a Windows desktop application built with WPF (Windows Presentation Foundation) and .NET 9.0 for reading and displaying Markdown files.
 
 ## Technology Stack
@@ -115,23 +126,83 @@ Application Close
 ```
 MdReader/
 ├── src/
-│   └── MdReader/
-│       ├── MdReader.csproj
-│       ├── App.xaml[.cs]              # Application entry point
-│       ├── MainWindow.xaml[.cs]       # Main window
-│       ├── UrlInputDialog.xaml[.cs]   # URL input dialog
-│       ├── StateManager.cs            # State persistence
-│       ├── app.manifest               # Windows manifest
-│       ├── app.ico                    # Application icon
-│       └── install-file-association.reg  # Registry file
+│   ├── MdReader/                        # WPF Desktop Application
+│   │   ├── MdReader.csproj
+│   │   ├── App.xaml[.cs]                # Application entry point
+│   │   ├── MainWindow.xaml[.cs]         # Main window
+│   │   ├── UrlInputDialog.xaml[.cs]     # URL input dialog
+│   │   ├── StateManager.cs              # State persistence
+│   │   ├── app.manifest                 # Windows manifest
+│   │   ├── app.ico                      # Application icon
+│   │   └── install-file-association.reg # Registry file
+│   └── PolicyActionService/             # Web API Service
+│       ├── PolicyActionService.csproj
+│       ├── Program.cs                   # API entry point
+│       ├── Controllers/                 # API controllers
+│       ├── Services/                    # Business logic
+│       ├── Models/                      # Data models
+│       └── appsettings.json             # Configuration
 ├── docs/
-│   ├── ARCHITECTURE.md                # This file
-│   ├── INSTALLATION.md                # Installation guide
-│   └── CONFIGURATION.md               # Configuration guide
-└── README.md                          # Project overview
+│   ├── ARCHITECTURE.md                  # This file
+│   ├── INSTALLATION.md                  # Installation guide
+│   ├── CONFIGURATION.md                 # Configuration guide
+│   ├── POLICY_ACTION_SERVICE.md         # Service documentation
+│   └── ...
+├── Dockerfile.policyactionservice       # Docker configuration
+├── docker-compose.yml                   # Docker Compose configuration
+└── README.md                            # Project overview
 ```
 
-## Future Enhancements
+---
+
+## PolicyActionService API
+
+### Overview
+PolicyActionService is a RESTful API built with ASP.NET Core 9.0 for managing policies and their associated actions.
+
+### Technology Stack
+- **Framework**: .NET 9.0
+- **API Type**: ASP.NET Core Web API
+- **Architecture**: Clean Architecture (Controllers → Services → Models)
+- **Language**: C# 12
+- **Storage**: In-memory (development/testing)
+
+### Application Structure
+
+#### Controllers
+- **PoliciesController**: Manages policy CRUD operations
+- **ActionsController**: Handles action execution and tracking
+- **HealthController**: Provides health check endpoint
+
+#### Services
+- **PolicyService**: Business logic for policy management
+- **ActionService**: Business logic for action execution
+
+#### Models
+- **Policy**: Represents a policy entity
+- **PolicyAction**: Represents an action associated with a policy
+
+### API Endpoints
+
+See [POLICY_ACTION_SERVICE.md](POLICY_ACTION_SERVICE.md) for complete API documentation.
+
+### Deployment
+
+The service can be deployed:
+1. **Standalone**: Using `dotnet run`
+2. **Docker**: Using the provided Dockerfile
+3. **Docker Compose**: For orchestrated deployment
+
+### Design Patterns
+
+- **Dependency Injection**: Services registered in Program.cs
+- **Interface Segregation**: Separate interfaces for each service
+- **Repository Pattern**: Service layer abstracts data access
+- **RESTful Design**: Standard HTTP methods and status codes
+
+---
+
+## MdReader Future Enhancements
 - Full-text search with highlighting
 - Export to PDF/HTML
 - Themes/Dark mode

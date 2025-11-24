@@ -2,6 +2,15 @@
 
 A lightweight, free Windows desktop application for reading and displaying Markdown files with a beautiful, formatted view.
 
+## Projects
+
+This repository contains two projects:
+
+1. **MdReader** - A Windows desktop application for reading Markdown files
+2. **PolicyActionService** - A RESTful API service for managing policies and actions
+
+## MdReader Desktop Application
+
 ## Features
 
 - **Multiple File Formats**: Open local `.md` and `.markdown` files, or load from URLs
@@ -50,6 +59,7 @@ Or see [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instruc
 
 ## Documentation
 
+### MdReader
 - [Quick Reference](docs/QUICK_REFERENCE.md) - Fast guide for common tasks
 - [Architecture](docs/ARCHITECTURE.md) - Technical design and structure
 - [Installation Guide](docs/INSTALLATION.md) - Detailed setup instructions
@@ -57,11 +67,23 @@ Or see [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instruc
 - [Sample Document](docs/SAMPLE.md) - Example Markdown file for testing
 - [Contributing](CONTRIBUTING.md) - How to contribute to the project
 
+### PolicyActionService
+- [PolicyActionService Documentation](docs/POLICY_ACTION_SERVICE.md) - Complete API documentation
+
 ## Technology Stack
+
+### MdReader Desktop
 
 - **Framework**: .NET 9.0 Windows
 - **UI**: WPF (Windows Presentation Foundation)
 - **Markdown**: Markdig and Markdig.Wpf
+- **Language**: C# 12
+
+### PolicyActionService
+
+- **Framework**: .NET 9.0
+- **API Type**: ASP.NET Core Web API
+- **Architecture**: RESTful API
 - **Language**: C# 12
 
 ## Screenshots

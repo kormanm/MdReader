@@ -7,6 +7,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MdReader", "src\MdReader\MdReader.csproj", "{47551666-8366-44FA-9F86-0C52ECDC7A81}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PolicyActionService", "src\PolicyActionService\PolicyActionService.csproj", "{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -29,11 +31,24 @@ Global
 		{47551666-8366-44FA-9F86-0C52ECDC7A81}.Release|x64.Build.0 = Release|Any CPU
 		{47551666-8366-44FA-9F86-0C52ECDC7A81}.Release|x86.ActiveCfg = Release|Any CPU
 		{47551666-8366-44FA-9F86-0C52ECDC7A81}.Release|x86.Build.0 = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|x64.Build.0 = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Debug|x86.Build.0 = Debug|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|x64.ActiveCfg = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|x64.Build.0 = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|x86.ActiveCfg = Release|Any CPU
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{47551666-8366-44FA-9F86-0C52ECDC7A81} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{D108FF03-A77E-4E77-B491-E5A83CC5C9D7} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal
