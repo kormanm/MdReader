@@ -51,6 +51,7 @@ Or see [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instruc
 ## Documentation
 
 - [Quick Reference](docs/QUICK_REFERENCE.md) - Fast guide for common tasks
+- [Keyboard Shortcuts](docs/KEYBOARD-SHORTCUTS.md) - Complete list of keyboard shortcuts
 - [Architecture](docs/ARCHITECTURE.md) - Technical design and structure
 - [Installation Guide](docs/INSTALLATION.md) - Detailed setup instructions
 - [Configuration](docs/CONFIGURATION.md) - Customization options

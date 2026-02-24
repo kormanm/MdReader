@@ -1,15 +1,16 @@
 <Window x:Class="MdReader.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:MdReader"
-        mc:Ignorable="d"
-        Title="MdReader" Height="600" Width="900"
-        Loaded="Window_Loaded"
-        Closing="Window_Closing"
-        AllowDrop="True"
-        Drop="Window_Drop">
+xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+xmlns:local="clr-namespace:MdReader"
+mc:Ignorable="d"
+Title="MdReader" Height="600" Width="900"
+Loaded="Window_Loaded"
+Closing="Window_Closing"
+AllowDrop="True"
+Drop="Window_Drop"
+PreviewKeyDown="Window_PreviewKeyDown">
     <DockPanel>
         <!-- Toolbar -->
         <ToolBar DockPanel.Dock="Top">
@@ -18,6 +19,9 @@
             </Button>
             <Button Name="OpenUrlButton" Click="OpenUrlButton_Click" ToolTip="Open URL">
                 <TextBlock Text="🌐 Open URL"/>
+            </Button>
+            <Button Name="OpenInNotepadButton" Click="OpenInNotepadButton_Click" ToolTip="Open current file in Notepad++">
+                <TextBlock Text="📝 Edit"/>
             </Button>
             <Separator/>
             <Button Name="ZoomInButton" Click="ZoomInButton_Click" ToolTip="Zoom In">
@@ -38,11 +42,12 @@
             </Button>
             <Separator/>
             <TextBox Name="SearchTextBox" Width="200" KeyDown="SearchTextBox_KeyDown" 
-                     ToolTip="Search (Enter for next, Shift+Enter for previous)"/>
-            <Button Name="SearchNextButton" Click="SearchNextButton_Click" ToolTip="Find Next">
+                     TextChanged="SearchTextBox_TextChanged"
+                     ToolTip="Search (F3 for next, Shift+F3 for previous, Ctrl+F to focus)"/>
+            <Button Name="SearchNextButton" Click="SearchNextButton_Click" ToolTip="Find Next (F3)">
                 <TextBlock Text="⏭ Next"/>
             </Button>
-            <Button Name="SearchPrevButton" Click="SearchPrevButton_Click" ToolTip="Find Previous">
+            <Button Name="SearchPrevButton" Click="SearchPrevButton_Click" ToolTip="Find Previous (Shift+F3)">
                 <TextBlock Text="⏮ Previous"/>
             </Button>
         </ToolBar>

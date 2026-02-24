@@ -1,0 +1,26 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+  <PropertyGroup>
+    <OutputName>MdReaderSetup</OutputName>
+    <OutputType>Package</OutputType>
+    <WixVersion>5.0.2</WixVersion>
+    <Platform>x64</Platform>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Sdk" Version="5.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MdReader\MdReader.csproj">
+      <Properties>
+        Platform=x64;
+        Configuration=$(Configuration);
+        PublishDir=$(MSBuildProjectDirectory)\bin\$(Configuration)\publish\;
+        SelfContained=true;
+        RuntimeIdentifier=win-x64;
+        PublishSingleFile=false;
+        PublishReadyToRun=false;
+      </Properties>
+    </ProjectReference>
+  </ItemGroup>
+</Project>

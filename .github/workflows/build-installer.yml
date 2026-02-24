@@ -1,0 +1,68 @@
+name: Build Installer
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore src/MdReader/MdReader.csproj
+
+    - name: Build
+      run: dotnet build src/MdReader/MdReader.csproj -c Release --no-restore
+
+    - name: Publish
+      run: dotnet publish src/MdReader/MdReader.csproj -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=true -p:PublishReadyToRun=true
+
+    - name: Install Inno Setup
+      run: |
+        choco install innosetup -y
+        # Add Inno Setup to PATH for easier access
+        $innoPath = "C:\Program Files (x86)\Inno Setup 6"
+        if (Test-Path $innoPath) {
+          echo "$innoPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        }
+      shell: pwsh
+        
+    - name: Create Installer
+      run: |
+        $isccPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+        if ($isccPath) {
+          & $isccPath.Source src/MdReader.Installer/MdReader-Setup.iss
+        } else {
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" src/MdReader.Installer/MdReader-Setup.iss
+        }
+      shell: pwsh
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: MdReaderSetup
+        path: installer-output/*.exe
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/v')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: installer-output/*.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

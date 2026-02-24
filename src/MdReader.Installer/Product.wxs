@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="MdReader" 
+           Version="1.0.0.0" 
+           Manufacturer="MdReader"
+           UpgradeCode="12345678-1234-1234-1234-123456789012"
+           Language="1033"
+           Compressed="yes">
+    
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    
+    <MediaTemplate EmbedCab="yes" />
+
+    <Feature Id="ProductFeature" Title="MdReader" Level="1">
+      <ComponentGroupRef Id="ProductComponents" />
+      <ComponentGroupRef Id="ProgramMenuShortcut" />
+    </Feature>
+
+    <!-- Install Directory -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="MdReader" />
+    </StandardDirectory>
+
+    <!-- Start Menu -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="MdReader"/>
+    </StandardDirectory>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+      <!-- Main executable -->
+      <Component Id="MainExecutable" Guid="12345678-1234-1234-1234-123456789013">
+        <File Id="MdReaderExe" 
+              Source="$(var.MdReader.TargetDir)MdReader.exe" 
+              KeyPath="yes">
+          <Shortcut Id="DesktopShortcut"
+                    Directory="DesktopFolder"
+                    Name="MdReader"
+                    Description="Markdown Reader Application"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Advertise="yes" />
+        </File>
+        
+        <!-- File associations -->
+        <ProgId Id="MdReader.MarkdownFile" Description="Markdown Document">
+          <Extension Id="md" ContentType="text/markdown">
+            <Verb Id="open" Command="Open" Argument='"%1"' />
+          </Extension>
+          <Extension Id="markdown" ContentType="text/markdown">
+            <Verb Id="open" Command="Open" Argument='"%1"' />
+          </Extension>
+        </ProgId>
+      </Component>
+
+      <!-- Application icon -->
+      <Component Id="AppIcon" Guid="12345678-1234-1234-1234-123456789014">
+        <File Id="AppIconFile" Source="$(var.MdReader.ProjectDir)app.ico" />
+      </Component>
+
+      <!-- Application manifest -->
+      <Component Id="AppManifest" Guid="12345678-1234-1234-1234-123456789015">
+        <File Id="AppManifestFile" Source="$(var.MdReader.TargetDir)MdReader.dll" />
+      </Component>
+
+      <!-- Runtime files - DLLs -->
+      <Component Id="RuntimeFiles" Guid="12345678-1234-1234-1234-123456789016">
+        <File Id="MarkdigDll" Source="$(var.MdReader.TargetDir)Markdig.dll" />
+        <File Id="MarkdigWpfDll" Source="$(var.MdReader.TargetDir)Markdig.Wpf.dll" />
+        <File Id="NewtonsoftJsonDll" Source="$(var.MdReader.TargetDir)Newtonsoft.Json.dll" />
+      </Component>
+
+      <!-- .NET Runtime (if self-contained) - This will need to include all runtime files -->
+      <!-- For self-contained deployment, use heat.exe to harvest all files -->
+    </ComponentGroup>
+
+    <ComponentGroup Id="ProgramMenuShortcut" Directory="ApplicationProgramsFolder">
+      <Component Id="ApplicationShortcut" Guid="12345678-1234-1234-1234-123456789017">
+        <Shortcut Id="ApplicationStartMenuShortcut"
+                  Name="MdReader"
+                  Description="Markdown Reader Application"
+                  Target="[INSTALLFOLDER]MdReader.exe"
+                  WorkingDirectory="INSTALLFOLDER"/>
+        <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall"/>
+        <RegistryValue Root="HKCU" 
+                       Key="Software\MdReader" 
+                       Name="installed" 
+                       Type="integer" 
+                       Value="1" 
+                       KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <StandardDirectory Id="DesktopFolder" />
+  </Fragment>
+</Wix>
