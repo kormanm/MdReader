@@ -22,9 +22,6 @@ public partial class MainWindow : Window
     private const double ZoomIncrement = 0.1;
     private const double MinZoom = 0.5;
     private const double MaxZoom = 3.0;
-    private const double MarginIncrement = 10.0;
-    private const double MinMargin = 0.0;
-    private const double MaxMargin = 100.0;
     private readonly StateManager _stateManager;
     private double _currentHorizontalMargin = 10.0;
     private int _currentSearchIndex = -1;
@@ -39,25 +36,38 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        // Restore previous session
-        var state = _stateManager.LoadState();
-        if (state?.OpenFiles != null)
+        var startupArgs = ((App)Application.Current).StartupArgs;
+        if (startupArgs.Length > 0)
         {
-            // Restore margin setting
-            _currentHorizontalMargin = state.HorizontalMargin;
+            // File(s) passed via command line (e.g. double-click association)
+            var state = _stateManager.LoadState();
+            _currentHorizontalMargin = state?.HorizontalMargin ?? _currentHorizontalMargin;
 
-            foreach (var filePath in state.OpenFiles)
+            foreach (var arg in startupArgs)
             {
-                if (File.Exists(filePath) || filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) 
+                OpenFile(arg);
+            }
+            return;
+        }
+
+        // Restore previous session
+        var savedState = _stateManager.LoadState();
+        if (savedState?.OpenFiles != null)
+        {
+            _currentHorizontalMargin = savedState.HorizontalMargin;
+
+            foreach (var filePath in savedState.OpenFiles)
+            {
+                if (File.Exists(filePath) || filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                     || filePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
                 {
                     OpenFile(filePath);
                 }
             }
 
-            if (state.ActiveTabIndex >= 0 && state.ActiveTabIndex < TabControl.Items.Count)
+            if (savedState.ActiveTabIndex >= 0 && savedState.ActiveTabIndex < TabControl.Items.Count)
             {
-                TabControl.SelectedIndex = state.ActiveTabIndex;
+                TabControl.SelectedIndex = savedState.ActiveTabIndex;
             }
         }
     }
@@ -84,6 +94,15 @@ public partial class MainWindow : Window
         _stateManager.SaveState(state);
     }
 
+    private void Window_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            e.Effects = DragDropEffects.Copy;
+        else
+            e.Effects = DragDropEffects.None;
+        e.Handled = true;
+    }
+
     private void Window_Drop(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))
@@ -102,6 +121,7 @@ public partial class MainWindow : Window
                 }
             }
         }
+        e.Handled = true;
     }
 
     private void OpenFileButton_Click(object sender, RoutedEventArgs e)
@@ -308,7 +328,7 @@ public partial class MainWindow : Window
         var scrollViewer = new ScrollViewer
         {
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
         };
 
         var viewer = new MarkdownViewer
@@ -813,60 +833,6 @@ public partial class MainWindow : Window
         ClearSearch();
     }
 
-    private void IncreaseMarginButton_Click(object sender, RoutedEventArgs e)
-    {
-        AdjustMargin(MarginIncrement);
-    }
-
-    private void DecreaseMarginButton_Click(object sender, RoutedEventArgs e)
-    {
-        AdjustMargin(-MarginIncrement);
-    }
-
-    private void AdjustMargin(double delta)
-    {
-        var newMargin = Math.Clamp(_currentHorizontalMargin + delta, MinMargin, MaxMargin);
-        if (Math.Abs(newMargin - _currentHorizontalMargin) < 0.01)
-        {
-            return; // No change
-        }
-
-        _currentHorizontalMargin = newMargin;
-
-        // Update all existing tabs
-        foreach (TabItem tab in TabControl.Items)
-        {
-            if (tab.Content is ScrollViewer scrollViewer &&
-                scrollViewer.Content is MarkdownViewer viewer)
-            {
-                viewer.Margin = new Thickness(_currentHorizontalMargin, 10, _currentHorizontalMargin, 10);
-            }
-        }
-
-        // Save the new margin setting
-        SaveMarginSetting();
-    }
-
-    private void SaveMarginSetting()
-    {
-        var openFiles = new List<string>();
-        foreach (TabItem tab in TabControl.Items)
-        {
-            if (tab.Tag is string filePath)
-            {
-                openFiles.Add(filePath);
-            }
-        }
-
-        var state = new AppState
-        {
-            OpenFiles = openFiles,
-            ActiveTabIndex = TabControl.SelectedIndex,
-            HorizontalMargin = _currentHorizontalMargin
-        };
-
-        _stateManager.SaveState(state);
-    }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {

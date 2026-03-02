@@ -9,7 +9,8 @@ Title="MdReader" Height="600" Width="900"
 Loaded="Window_Loaded"
 Closing="Window_Closing"
 AllowDrop="True"
-Drop="Window_Drop"
+PreviewDrop="Window_Drop"
+PreviewDragOver="Window_DragOver"
 PreviewKeyDown="Window_PreviewKeyDown">
     <DockPanel>
         <!-- Toolbar -->
@@ -32,13 +33,6 @@ PreviewKeyDown="Window_PreviewKeyDown">
             </Button>
             <Button Name="ZoomResetButton" Click="ZoomResetButton_Click" ToolTip="Reset Zoom">
                 <TextBlock Text="🔍 100%"/>
-            </Button>
-            <Separator/>
-            <Button Name="DecreaseMarginButton" Click="DecreaseMarginButton_Click" ToolTip="Shrink (Decrease Margins)">
-                <TextBlock Text="◀ Shrink"/>
-            </Button>
-            <Button Name="IncreaseMarginButton" Click="IncreaseMarginButton_Click" ToolTip="Stretch (Increase Margins)">
-                <TextBlock Text="▶ Stretch"/>
             </Button>
             <Separator/>
             <TextBox Name="SearchTextBox" Width="200" KeyDown="SearchTextBox_KeyDown" 
