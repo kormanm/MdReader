@@ -24,9 +24,17 @@ public partial class MainWindow : Window
     private const double MaxZoom = 3.0;
     private readonly StateManager _stateManager;
     private double _currentHorizontalMargin = 10.0;
-    private int _currentSearchIndex = -1;
-    private List<TextRange> _searchResults = new();
     private string _lastSearchText = string.Empty;
+    private SearchMatch? _activeSearchMatch;
+    private TextRange? _activeHighlight;
+    private bool _suppressSearchClearOnTabChange;
+
+    private sealed class SearchMatch
+    {
+        public required TabItem Tab { get; init; }
+        public required TextRange Range { get; init; }
+        public required int Offset { get; init; }
+    }
 
     public MainWindow()
     {
@@ -386,6 +394,23 @@ public partial class MainWindow : Window
             e.Handled = true;
         };
 
+        var contextMenu = new ContextMenu();
+
+        var openFolderMenuItem = new MenuItem { Header = "Open containing folder in Explorer" };
+        openFolderMenuItem.Click += TabHeaderOpenContainingFolder_Click;
+
+        var copyFolderPathMenuItem = new MenuItem { Header = "Copy folder path to clipboard" };
+        copyFolderPathMenuItem.Click += TabHeaderCopyFolderPath_Click;
+
+        var copyFullPathMenuItem = new MenuItem { Header = "Copy full path to clipboard" };
+        copyFullPathMenuItem.Click += TabHeaderCopyFullPath_Click;
+
+        contextMenu.Items.Add(openFolderMenuItem);
+        contextMenu.Items.Add(copyFolderPathMenuItem);
+        contextMenu.Items.Add(copyFullPathMenuItem);
+        contextMenu.Opened += TabHeaderContextMenu_Opened;
+        panel.ContextMenu = contextMenu;
+
         panel.Children.Add(textBlock);
         panel.Children.Add(closeButton);
 
@@ -429,6 +454,139 @@ public partial class MainWindow : Window
             return panel.Children.Contains(button);
         }
         return false;
+    }
+
+    private void TabHeaderContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ContextMenu contextMenu || contextMenu.PlacementTarget is not FrameworkElement headerElement)
+        {
+            return;
+        }
+
+        var tabItem = FindTabItemFromHeaderElement(headerElement);
+        var sourcePath = tabItem?.Tag as string;
+        var isLocalFile = !string.IsNullOrWhiteSpace(sourcePath) &&
+            !sourcePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !sourcePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var item in contextMenu.Items.OfType<MenuItem>())
+        {
+            if (item.Header is string header &&
+                (header.StartsWith("Open containing folder", StringComparison.OrdinalIgnoreCase) ||
+                 header.StartsWith("Copy folder path", StringComparison.OrdinalIgnoreCase)))
+            {
+                item.IsEnabled = isLocalFile;
+            }
+            else
+            {
+                item.IsEnabled = !string.IsNullOrWhiteSpace(sourcePath);
+            }
+        }
+    }
+
+    private TabItem? FindTabItemFromHeaderElement(FrameworkElement headerElement)
+    {
+        foreach (TabItem tab in TabControl.Items)
+        {
+            if (ReferenceEquals(tab.Header, headerElement))
+            {
+                return tab;
+            }
+        }
+
+        return null;
+    }
+
+    private void TabHeaderOpenContainingFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem ||
+            menuItem.Parent is not ContextMenu contextMenu ||
+            contextMenu.PlacementTarget is not FrameworkElement headerElement)
+        {
+            return;
+        }
+
+        var tabItem = FindTabItemFromHeaderElement(headerElement);
+        if (tabItem?.Tag is not string filePath)
+        {
+            return;
+        }
+
+        if (filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            filePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("Remote files do not have a local containing folder.", "Not Available", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var folderPath = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrWhiteSpace(folderPath) || !Directory.Exists(folderPath))
+        {
+            MessageBox.Show("Containing folder not found.", "Folder Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = $"\"{folderPath}\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to open folder: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void TabHeaderCopyFolderPath_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem ||
+            menuItem.Parent is not ContextMenu contextMenu ||
+            contextMenu.PlacementTarget is not FrameworkElement headerElement)
+        {
+            return;
+        }
+
+        var tabItem = FindTabItemFromHeaderElement(headerElement);
+        if (tabItem?.Tag is not string filePath)
+        {
+            return;
+        }
+
+        if (filePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+            filePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("Remote files do not have a local folder path.", "Not Available", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var folderPath = Path.GetDirectoryName(filePath);
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            MessageBox.Show("Folder path is not available.", "Not Available", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        Clipboard.SetText(folderPath);
+    }
+
+    private void TabHeaderCopyFullPath_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem ||
+            menuItem.Parent is not ContextMenu contextMenu ||
+            contextMenu.PlacementTarget is not FrameworkElement headerElement)
+        {
+            return;
+        }
+
+        var tabItem = FindTabItemFromHeaderElement(headerElement);
+        if (tabItem?.Tag is string sourcePath && !string.IsNullOrWhiteSpace(sourcePath))
+        {
+            Clipboard.SetText(sourcePath);
+        }
     }
 
     private void Hyperlink_Click(object sender, RoutedEventArgs e)
@@ -594,16 +752,13 @@ public partial class MainWindow : Window
     private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         var searchText = SearchTextBox.Text;
-        
-        // If search text is empty, clear search
+
         if (string.IsNullOrWhiteSpace(searchText))
         {
             ClearSearch();
-            _lastSearchText = string.Empty;
             return;
         }
 
-        // If search text changed, rebuild and show first result
         if (!searchText.Equals(_lastSearchText, StringComparison.Ordinal))
         {
             _lastSearchText = searchText;
@@ -623,23 +778,21 @@ public partial class MainWindow : Window
 
     private void SearchNext()
     {
-        // If search box is empty, do nothing
         if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
         {
             return;
         }
-        
+
         PerformSearch(forward: true);
     }
 
     private void SearchPrevious()
     {
-        // If search box is empty, do nothing
         if (string.IsNullOrWhiteSpace(SearchTextBox.Text))
         {
             return;
         }
-        
+
         PerformSearch(forward: false);
     }
 
@@ -652,26 +805,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (TabControl.SelectedItem is TabItem tab && 
-            tab.Content is ScrollViewer scrollViewer &&
-            scrollViewer.Content is MarkdownViewer viewer)
+        _activeSearchMatch = null;
+        if (!TryNavigateToMatch(searchText, forward: true, continueFromCurrentMatch: false))
         {
-            // Get the FlowDocument from the viewer
-            var document = GetFlowDocument(viewer);
-            if (document == null)
-            {
-                return;
-            }
-
-            // Rebuild search results
-            BuildSearchResults(document, searchText);
-
-            if (_searchResults.Count > 0)
-            {
-                // Show first result
-                _currentSearchIndex = 0;
-                HighlightSearchResult(_currentSearchIndex);
-            }
+            ClearCurrentHighlight();
         }
     }
 
@@ -684,125 +821,285 @@ public partial class MainWindow : Window
             return;
         }
 
-        if (TabControl.SelectedItem is TabItem tab && 
-            tab.Content is ScrollViewer scrollViewer &&
-            scrollViewer.Content is MarkdownViewer viewer)
+        var searchTextChanged = !searchText.Equals(_lastSearchText, StringComparison.Ordinal);
+        _lastSearchText = searchText;
+        if (searchTextChanged)
         {
-            // Get the FlowDocument from the viewer
-            var document = GetFlowDocument(viewer);
-            if (document == null)
-            {
-                return;
-            }
+            _activeSearchMatch = null;
+        }
 
-            // If no results exist, or search text changed, rebuild
-            if (_searchResults.Count == 0 || !searchText.Equals(_lastSearchText, StringComparison.Ordinal))
-            {
-                _lastSearchText = searchText;
-                BuildSearchResults(document, searchText);
-                
-                // If still no results after building, show message and return
-                if (_searchResults.Count == 0)
-                {
-                    System.Windows.MessageBox.Show($"No matches found for '{searchText}'", "Search", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
-                }
-                
-                // Start at first result
-                _currentSearchIndex = forward ? 0 : _searchResults.Count - 1;
-                HighlightSearchResult(_currentSearchIndex);
-                return;
-            }
-
-            // Move to next/previous result
-            if (forward)
-            {
-                _currentSearchIndex = (_currentSearchIndex + 1) % _searchResults.Count;
-            }
-            else
-            {
-                _currentSearchIndex = _currentSearchIndex <= 0 ? _searchResults.Count - 1 : _currentSearchIndex - 1;
-            }
-
-            // Highlight and scroll to current result
-            HighlightSearchResult(_currentSearchIndex);
+        if (!TryNavigateToMatch(searchText, forward, continueFromCurrentMatch: true))
+        {
+            MessageBox.Show($"No matches found for '{searchText}'", "Search", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 
-    private void BuildSearchResults(FlowDocument document, string searchText)
+    private bool TryNavigateToMatch(string searchText, bool forward, bool continueFromCurrentMatch)
     {
-        ClearSearch();
-        _searchResults = new List<TextRange>();
+        var tabs = TabControl.Items.OfType<TabItem>().ToList();
+        if (tabs.Count == 0)
+        {
+            return false;
+        }
+
+        var selectedTab = TabControl.SelectedItem as TabItem ?? tabs[0];
+        var anchorTab = selectedTab;
+        var startOffset = GetVisibleStartOffset(anchorTab);
+        if (continueFromCurrentMatch && _activeSearchMatch == null)
+        {
+            startOffset += forward ? 1 : -1;
+        }
+
+        if (continueFromCurrentMatch &&
+            _activeSearchMatch != null &&
+            tabs.Any(t => ReferenceEquals(t, _activeSearchMatch.Tab)) &&
+            _lastSearchText.Equals(searchText, StringComparison.Ordinal))
+        {
+            anchorTab = _activeSearchMatch.Tab;
+            startOffset = forward ? _activeSearchMatch.Offset + 1 : _activeSearchMatch.Offset - 1;
+        }
+
+        var anchorIndex = tabs.IndexOf(anchorTab);
+        var anchorMatches = BuildSearchMatches(anchorTab, searchText);
+        var match = forward
+            ? FindFirstAtOrAfter(anchorMatches, startOffset)
+            : FindLastAtOrBefore(anchorMatches, startOffset);
+
+        if (match == null)
+        {
+            for (int step = 1; step < tabs.Count; step++)
+            {
+                var tabIndex = forward
+                    ? (anchorIndex + step) % tabs.Count
+                    : (anchorIndex - step + tabs.Count) % tabs.Count;
+
+                var tabMatches = BuildSearchMatches(tabs[tabIndex], searchText);
+                if (tabMatches.Count == 0)
+                {
+                    continue;
+                }
+
+                match = forward ? tabMatches[0] : tabMatches[^1];
+                break;
+            }
+        }
+
+        if (match == null)
+        {
+            match = forward
+                ? FindFirstBefore(anchorMatches, startOffset)
+                : FindLastAfter(anchorMatches, startOffset);
+        }
+
+        if (match == null)
+        {
+            return false;
+        }
+
+        ActivateSearchMatch(match);
+        return true;
+    }
+
+    private List<SearchMatch> BuildSearchMatches(TabItem tab, string searchText)
+    {
+        var matches = new List<SearchMatch>();
+
+        if (string.IsNullOrWhiteSpace(searchText) ||
+            tab.Content is not ScrollViewer scrollViewer ||
+            scrollViewer.Content is not MarkdownViewer viewer)
+        {
+            return matches;
+        }
+
+        var document = GetFlowDocument(viewer);
+        if (document == null)
+        {
+            return matches;
+        }
 
         var textPointer = document.ContentStart;
+        var offset = 0;
         while (textPointer != null)
         {
             if (textPointer.GetPointerContext(LogicalDirection.Forward) == TextPointerContext.Text)
             {
                 var text = textPointer.GetTextInRun(LogicalDirection.Forward);
                 var index = text.IndexOf(searchText, StringComparison.OrdinalIgnoreCase);
-                
+
                 while (index >= 0)
                 {
                     var start = textPointer.GetPositionAtOffset(index);
                     var end = start?.GetPositionAtOffset(searchText.Length);
-                    
+
                     if (start != null && end != null)
                     {
-                        var textRange = new TextRange(start, end);
-                        _searchResults.Add(textRange);
+                        matches.Add(new SearchMatch
+                        {
+                            Tab = tab,
+                            Range = new TextRange(start, end),
+                            Offset = offset + index
+                        });
                     }
 
                     index = text.IndexOf(searchText, index + 1, StringComparison.OrdinalIgnoreCase);
                 }
+
+                offset += text.Length;
             }
 
             textPointer = textPointer.GetNextContextPosition(LogicalDirection.Forward);
         }
 
-        if (_searchResults.Count > 0)
-        {
-            _currentSearchIndex = 0;
-        }
+        return matches;
     }
 
-    private void HighlightSearchResult(int index)
+    private int GetVisibleStartOffset(TabItem tab)
     {
-        if (index < 0 || index >= _searchResults.Count)
+        if (tab.Content is not ScrollViewer scrollViewer ||
+            scrollViewer.Content is not MarkdownViewer viewer)
         {
-            return;
+            return 0;
         }
 
-        // Clear previous highlights
-        foreach (var result in _searchResults)
+        var document = GetFlowDocument(viewer);
+        if (document == null)
         {
-            result.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+            return 0;
         }
 
-        // Highlight current result
-        var currentResult = _searchResults[index];
-        currentResult.ApplyPropertyValue(TextElement.BackgroundProperty, System.Windows.Media.Brushes.Yellow);
-
-        // Scroll into view
-        var start = currentResult.Start;
-        if (start.Parent is FrameworkElement element)
+        var totalTextLength = new TextRange(document.ContentStart, document.ContentEnd).Text.Length;
+        if (totalTextLength <= 0 || scrollViewer.ScrollableHeight <= 0)
         {
-            element.BringIntoView();
+            return 0;
+        }
+
+        var ratio = Math.Clamp(scrollViewer.VerticalOffset / scrollViewer.ScrollableHeight, 0.0, 1.0);
+        return (int)Math.Clamp(Math.Floor(ratio * totalTextLength), 0, Math.Max(0, totalTextLength - 1));
+    }
+
+    private SearchMatch? FindFirstAtOrAfter(List<SearchMatch> matches, int offset)
+    {
+        foreach (var match in matches)
+        {
+            if (match.Offset >= offset)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private SearchMatch? FindLastAtOrBefore(List<SearchMatch> matches, int offset)
+    {
+        for (int i = matches.Count - 1; i >= 0; i--)
+        {
+            if (matches[i].Offset <= offset)
+            {
+                return matches[i];
+            }
+        }
+
+        return null;
+    }
+
+    private SearchMatch? FindFirstBefore(List<SearchMatch> matches, int offset)
+    {
+        foreach (var match in matches)
+        {
+            if (match.Offset < offset)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private SearchMatch? FindLastAfter(List<SearchMatch> matches, int offset)
+    {
+        for (int i = matches.Count - 1; i >= 0; i--)
+        {
+            if (matches[i].Offset > offset)
+            {
+                return matches[i];
+            }
+        }
+
+        return null;
+    }
+
+    private void ActivateSearchMatch(SearchMatch match)
+    {
+        ClearCurrentHighlight();
+
+        if (!ReferenceEquals(TabControl.SelectedItem, match.Tab))
+        {
+            _suppressSearchClearOnTabChange = true;
+            try
+            {
+                TabControl.SelectedItem = match.Tab;
+            }
+            finally
+            {
+                _suppressSearchClearOnTabChange = false;
+            }
+        }
+
+        _activeSearchMatch = match;
+        _activeHighlight = match.Range;
+        match.Range.ApplyPropertyValue(TextElement.BackgroundProperty, System.Windows.Media.Brushes.Yellow);
+
+        if (match.Tab.Content is ScrollViewer scrollViewer &&
+            scrollViewer.Content is MarkdownViewer viewer)
+        {
+            CenterMatchInViewport(match, scrollViewer, viewer);
         }
         else
         {
+            var start = match.Range.Start;
+            if (start.Parent is FrameworkElement element)
+            {
+                element.BringIntoView();
+                return;
+            }
+
             start.Paragraph?.BringIntoView();
         }
     }
 
+    private void CenterMatchInViewport(SearchMatch match, ScrollViewer scrollViewer, MarkdownViewer viewer)
+    {
+        var document = GetFlowDocument(viewer);
+        if (document == null)
+        {
+            match.Range.Start.Paragraph?.BringIntoView();
+            return;
+        }
+
+        var totalTextLength = new TextRange(document.ContentStart, document.ContentEnd).Text.Length;
+        if (totalTextLength <= 0 || scrollViewer.ScrollableHeight <= 0)
+        {
+            match.Range.Start.Paragraph?.BringIntoView();
+            return;
+        }
+
+        var ratio = Math.Clamp((double)match.Offset / Math.Max(1, totalTextLength - 1), 0.0, 1.0);
+        var targetCenter = ratio * scrollViewer.ScrollableHeight;
+        var targetOffset = Math.Clamp(targetCenter - (scrollViewer.ViewportHeight / 2.0), 0.0, scrollViewer.ScrollableHeight);
+        scrollViewer.ScrollToVerticalOffset(targetOffset);
+    }
+
+    private void ClearCurrentHighlight()
+    {
+        _activeHighlight?.ApplyPropertyValue(TextElement.BackgroundProperty, null);
+        _activeHighlight = null;
+    }
+
     private void ClearSearch()
     {
-        foreach (var result in _searchResults)
-        {
-            result.ApplyPropertyValue(TextElement.BackgroundProperty, null);
-        }
-        _searchResults.Clear();
-        _currentSearchIndex = -1;
+        ClearCurrentHighlight();
+        _activeSearchMatch = null;
         _lastSearchText = string.Empty;
     }
 
@@ -829,7 +1126,11 @@ public partial class MainWindow : Window
 
     private void TabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // Clear search when switching tabs
+        if (_suppressSearchClearOnTabChange)
+        {
+            return;
+        }
+
         ClearSearch();
     }
 
