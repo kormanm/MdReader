@@ -398,3 +398,5 @@ FodyWeavers.xsd
 *.sln.iml
 .idea/
 /installer-output/MdReaderSetup-1.0.0.exe
+
+/installer-output
