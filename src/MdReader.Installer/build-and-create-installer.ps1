@@ -3,7 +3,8 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$InnoSetupPath = ""
+    [string]$InnoSetupPath = "",
+    [string]$AppVersion = ""
 )
 
 # Step 1: Build and publish the application
@@ -66,7 +67,14 @@ if ([string]::IsNullOrEmpty($InnoSetupPath) -or -not (Test-Path $InnoSetupPath))
 $scriptPath = Join-Path $PSScriptRoot "MdReader-Setup.iss"
 Write-Host "Compiling installer script: $scriptPath" -ForegroundColor Cyan
 
-& $InnoSetupPath $scriptPath
+$compileArgs = @()
+if (-not [string]::IsNullOrWhiteSpace($AppVersion)) {
+    Write-Host "Using installer version override: $AppVersion" -ForegroundColor Cyan
+    $compileArgs += "/DMyAppVersion=$AppVersion"
+}
+$compileArgs += $scriptPath
+
+& $InnoSetupPath @compileArgs
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "`n========================================" -ForegroundColor Green

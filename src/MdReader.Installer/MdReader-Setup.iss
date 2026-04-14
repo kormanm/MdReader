@@ -2,7 +2,9 @@
 ; This script creates a Windows installer for MdReader
 
 #define MyAppName "MdReader"
-#define MyAppVersion "1.0.0"
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "MdReader"
 #define MyAppURL "https://github.com/kormanm/MdReader"
 #define MyAppExeName "MdReader.exe"

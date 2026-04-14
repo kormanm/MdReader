@@ -2,12 +2,14 @@ name: Build Installer
 
 on:
   push:
-    branches: [ main ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      version:
+        description: Release version to build, with or without a leading v
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -25,47 +27,63 @@ jobs:
       with:
         dotnet-version: '9.0.x'
 
-    - name: Restore dependencies
-      run: dotnet restore src/MdReader/MdReader.csproj
+    - name: Resolve installer version
+      id: version
+      shell: pwsh
+      run: |
+        $version = "1.0.0"
+        $tag = ""
+        $createRelease = $false
 
-    - name: Build
-      run: dotnet build src/MdReader/MdReader.csproj -c Release --no-restore
+        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+          $version = "${{ inputs.version }}".Trim()
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "A version is required for manual runs."
+          }
+          if ($version.StartsWith("v")) {
+            $version = $version.Substring(1)
+          }
 
-    - name: Publish
-      run: dotnet publish src/MdReader/MdReader.csproj -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=true -p:PublishReadyToRun=true
+          $tag = "v$version"
+          $createRelease = $true
+        }
+        elseif ($env:GITHUB_REF -like "refs/tags/v*") {
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          $tag = $env:GITHUB_REF_NAME
+          $createRelease = $true
+        }
+
+        "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "create_release=$($createRelease.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
     - name: Install Inno Setup
       run: |
         choco install innosetup -y
-        # Add Inno Setup to PATH for easier access
-        $innoPath = "C:\Program Files (x86)\Inno Setup 6"
-        if (Test-Path $innoPath) {
-          echo "$innoPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        }
-      shell: pwsh
-        
-    - name: Create Installer
-      run: |
-        $isccPath = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-        if ($isccPath) {
-          & $isccPath.Source src/MdReader.Installer/MdReader-Setup.iss
-        } else {
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" src/MdReader.Installer/MdReader-Setup.iss
-        }
       shell: pwsh
 
-    - name: Upload Installer
+    - name: Build installer
+      run: >
+        & ".\src\MdReader.Installer\build-and-create-installer.ps1"
+        -Configuration Release
+        -AppVersion "${{ steps.version.outputs.version }}"
+      shell: pwsh
+
+    - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: MdReaderSetup
+        name: MdReaderSetup-${{ steps.version.outputs.version }}
         path: installer-output/*.exe
+        if-no-files-found: error
 
-    - name: Create Release
-      if: startsWith(github.ref, 'refs/tags/v')
-      uses: softprops/action-gh-release@v1
+    - name: Attach installer to GitHub release
+      if: steps.version.outputs.create_release == 'true'
+      uses: softprops/action-gh-release@v2
       with:
         files: installer-output/*.exe
-        draft: false
-        prerelease: false
+        fail_on_unmatched_files: true
+        generate_release_notes: true
+        tag_name: ${{ steps.version.outputs.tag }}
+        target_commitish: ${{ github.sha }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
