@@ -4,7 +4,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [switch]$SelfContained = $true
+    [switch]$SelfContained = $false
 )
 
 Write-Host "Building MdReader..." -ForegroundColor Cyan
@@ -28,7 +28,6 @@ $publishArgs = @(
     "-p:PublishSingleFile=false"
     "-p:SelfContained=$($SelfContained.ToString().ToLower())"
     "-p:PublishReadyToRun=true"
-    "-p:IncludeNativeLibrariesForSelfExtract=true"
 )
 
 Write-Host "Publishing application..." -ForegroundColor Cyan

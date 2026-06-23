@@ -8,6 +8,7 @@
 #define MyAppPublisher "MdReader"
 #define MyAppURL "https://github.com/kormanm/MdReader"
 #define MyAppExeName "MdReader.exe"
+#define DotNetDownloadUrl "https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/9.0/windowsdesktop-runtime-latest-win-x64.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -71,3 +72,86 @@ Root: HKCR; Subkey: "Applications\{#MyAppExeName}\SupportedTypes"; ValueType: st
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+
+// Import URLDownloadToFile from urlmon.dll for downloading the .NET runtime
+function URLDownloadToFile(pCaller: IUnknown; szURL: WideString;
+    szFileName: WideString; dwReserved: LongWord; lpfnCB: IUnknown): HResult;
+    external 'URLDownloadToFileW@urlmon.dll stdcall';
+
+// Returns True if .NET 9 Windows Desktop Runtime is already installed
+function IsDotNet9Installed(): Boolean;
+var
+  SubkeyNames: TArrayOfString;
+  I: Integer;
+begin
+  Result := False;
+  if RegGetSubkeyNames(HKEY_LOCAL_MACHINE,
+      'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App',
+      SubkeyNames) then
+  begin
+    for I := 0 to GetArrayLength(SubkeyNames) - 1 do
+      if Copy(SubkeyNames[I], 1, 2) = '9.' then
+      begin
+        Result := True;
+        Exit;
+      end;
+  end;
+end;
+
+// Called by Inno Setup before the installation begins.
+// Downloads and installs .NET 9 Desktop Runtime when it is missing.
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  TempFile: String;
+  ResultCode: Integer;
+  DownloadResult: HResult;
+begin
+  Result := '';
+  NeedsRestart := False;
+
+  if IsDotNet9Installed() then
+    Exit;
+
+  if MsgBox('.NET 9.0 Windows Desktop Runtime is required to run MdReader.' + #13#10#13#10 +
+            'It will be downloaded and installed automatically.' + #13#10 +
+            'Click OK to continue or Cancel to abort.',
+            mbConfirmation, MB_OKCANCEL) <> IDOK then
+  begin
+    Result := 'Installation cancelled. .NET 9.0 Windows Desktop Runtime is required.';
+    Exit;
+  end;
+
+  TempFile := ExpandConstant('{tmp}\windowsdesktop-runtime-9.0-win-x64.exe');
+
+  WizardForm.StatusLabel.Caption := 'Downloading .NET 9.0 Windows Desktop Runtime...';
+  DownloadResult := URLDownloadToFile(nil, '{#DotNetDownloadUrl}', TempFile, 0, nil);
+
+  if DownloadResult <> 0 then
+  begin
+    if MsgBox('Failed to download .NET 9.0 Windows Desktop Runtime.' + #13#10#13#10 +
+              'Please install it manually, then run this installer again.' + #13#10#13#10 +
+              'Click OK to open the download page in your browser.',
+              mbError, MB_OKCANCEL) = IDOK then
+      ShellExec('open', 'https://dotnet.microsoft.com/download/dotnet/9.0',
+                '', '', SW_SHOW, ewNoWait, ResultCode);
+    Result := 'Please install .NET 9.0 Windows Desktop Runtime and run this installer again.';
+    Exit;
+  end;
+
+  WizardForm.StatusLabel.Caption := 'Installing .NET 9.0 Windows Desktop Runtime...';
+  if not Exec(TempFile, '/install /quiet /norestart', '', SW_SHOW,
+              ewWaitUntilTerminated, ResultCode) then
+  begin
+    Result := '.NET 9.0 Windows Desktop Runtime could not be launched.';
+    Exit;
+  end;
+
+  // Exit code 3010 means success but a restart is needed
+  if ResultCode = 3010 then
+    NeedsRestart := True
+  else if ResultCode <> 0 then
+    Result := '.NET 9.0 Windows Desktop Runtime installation failed (exit code ' +
+              IntToStr(ResultCode) + '). Please install it manually.';
+end;
