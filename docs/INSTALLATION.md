@@ -2,13 +2,26 @@
 
 ## System Requirements
 - **Operating System**: Windows 10 or Windows 11
-- **.NET Runtime**: .NET 9.0 Desktop Runtime
-- **Disk Space**: ~50 MB
+- **Disk Space**: ~100 MB (the installer is self-contained and includes the .NET 9 runtime)
 - **RAM**: 512 MB minimum, 1 GB recommended
 
 ## Installation Steps
 
-### Option 1: Build from Source
+### Option 1: Installer (Recommended)
+
+1. Go to the **[Releases page](https://github.com/kormanm/MdReader/releases/latest)**
+2. Download `MdReaderSetup-<version>.exe`
+3. Run the installer and follow the on-screen steps
+
+The installer is **self-contained** — it bundles the .NET 9 runtime so no additional software is required.
+
+During installation you can optionally:
+- Create a desktop shortcut
+- Associate `.md` and `.markdown` files with MdReader (recommended)
+
+To uninstall, use *Add or Remove Programs* in Windows Settings.
+
+### Option 2: Build from Source
 
 #### Prerequisites
 1. Install [.NET 9.0 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
@@ -39,28 +52,11 @@
    
    This creates a single executable that doesn't require .NET runtime to be installed.
 
-### Option 2: Using Pre-built Binaries (When Available)
-
-1. Download the latest release from the [Releases page](https://github.com/kormanm/MdReader/releases)
-2. Extract the ZIP file to your desired location (e.g., `C:\Program Files\MdReader\`)
-3. Run `MdReader.exe`
-
 ## File Association Setup
 
-To integrate MdReader with Windows Explorer:
+When using the installer, file associations can be configured automatically during setup. If you built from source, you can set them up manually.
 
-### Method 1: Registry File (Requires Administrator Rights)
-
-1. Edit `install-file-association.reg` and update the path to match your installation:
-   ```reg
-   @="\"C:\\Your\\Installation\\Path\\MdReader.exe\" \"%1\""
-   ```
-
-2. Right-click the file and select "Merge"
-3. Confirm the UAC prompt
-4. Click "Yes" to add the information to registry
-
-### Method 2: Manual "Open With" Association
+### Method 1: Manual "Open With" Association
 
 1. Right-click any `.md` file
 2. Select "Open with" → "Choose another app"
@@ -70,7 +66,7 @@ To integrate MdReader with Windows Explorer:
 6. Check "Always use this app to open .md files"
 7. Click "OK"
 
-### Method 3: Set as Default Program
+### Method 2: Set as Default Program
 
 1. Open Windows Settings
 2. Go to "Apps" → "Default apps"
@@ -95,33 +91,29 @@ To integrate MdReader with Windows Explorer:
 
 ## Uninstallation
 
-### Remove Application
-1. Delete the MdReader folder from your installation location
+### Installer-based installation
+
+Use *Add or Remove Programs* in Windows Settings to uninstall MdReader. The uninstaller removes the application and all registry entries added during installation.
+
+Optionally, delete your personal state folder to remove saved tabs:
+```
+%APPDATA%\MdReader
+```
+
+### Manual (build from source) installation
+
+1. Delete the MdReader folder from your installation location.
 2. Delete the state folder:
    ```
    %APPDATA%\MdReader
    ```
-
-### Remove File Association
-1. Create a file named `uninstall-file-association.reg` with this content:
-   ```reg
-   Windows Registry Editor Version 5.00
-
-   [-HKEY_CLASSES_ROOT\.md]
-   [-HKEY_CLASSES_ROOT\.markdown]
-   [-HKEY_CLASSES_ROOT\MdReader.MarkdownFile]
-   [-HKEY_CLASSES_ROOT\Applications\MdReader.exe]
-   ```
-
-2. Run the file to remove registry entries
-
-Or use Windows Settings to change the default app for .md files.
+3. (Optional) Remove file associations via Windows Settings → Apps → Default apps.
 
 ## Troubleshooting
 
 ### Application won't start
-- **Issue**: Missing .NET runtime
-- **Solution**: Install [.NET 9.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0)
+- **Issue**: Missing .NET runtime (build-from-source installation only)
+- **Solution**: Install [.NET 9.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0), or use the self-contained installer from the [Releases page](https://github.com/kormanm/MdReader/releases/latest)
 
 ### Files won't open
 - **Issue**: Incorrect file association
@@ -148,7 +140,7 @@ Or use Windows Settings to change the default app for .md files.
 ## Updates
 
 To update MdReader:
-1. Download the new version
+1. Download the new installer from the [Releases page](https://github.com/kormanm/MdReader/releases/latest)
 2. Close MdReader
-3. Replace the old executable with the new one
-4. Your tabs and settings will be preserved (stored separately)
+3. Run the new installer — it will upgrade the existing installation
+4. Your tabs and settings will be preserved (stored separately in `%APPDATA%\MdReader`)

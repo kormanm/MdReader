@@ -18,13 +18,28 @@ A lightweight, free Windows desktop application for reading and displaying Markd
   - External links open in your default browser
 - **Modern UI**: Clean, intuitive interface built with WPF
 
+## Download & Install
+
+**[⬇️ Download the latest installer from the Releases page](https://github.com/kormanm/MdReader/releases/latest)**
+
+1. Download `MdReaderSetup-<version>.exe` from the latest release
+2. Run the installer — it is self-contained and includes the .NET 9 runtime
+3. (Optional) Associate `.md` and `.markdown` files with MdReader during setup
+
+> No additional software is required. The installer handles everything.
+
 ## Quick Start
 
 ### Requirements
 - Windows 10 or Windows 11
-- .NET 9.0 Desktop Runtime
 
 ### Installation
+
+#### Easy Install (Recommended)
+
+Download and run the installer from the **[Releases page](https://github.com/kormanm/MdReader/releases/latest)**. The self-contained installer requires no additional software.
+
+#### Build from Source
 
 1. Clone and build:
    ```bash
@@ -38,7 +53,7 @@ A lightweight, free Windows desktop application for reading and displaying Markd
    dotnet run
    ```
 
-Or see [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instructions.
+See [INSTALLATION.md](docs/INSTALLATION.md) for detailed installation instructions.
 
 ### Basic Usage
 
