@@ -2,7 +2,8 @@
 
 ## System Requirements
 - **Operating System**: Windows 10 or Windows 11
-- **Disk Space**: ~100 MB (the installer is self-contained and includes the .NET 9 runtime)
+- **.NET Runtime**: .NET 9.0 Desktop Runtime (the installer downloads and installs it automatically if not already present)
+- **Disk Space**: ~50 MB (plus ~60 MB for the .NET runtime if not already installed)
 - **RAM**: 512 MB minimum, 1 GB recommended
 
 ## Installation Steps
@@ -13,7 +14,7 @@
 2. Download `MdReaderSetup-<version>.exe`
 3. Run the installer and follow the on-screen steps
 
-The installer is **self-contained** — it bundles the .NET 9 runtime so no additional software is required.
+The installer checks for .NET 9.0 Desktop Runtime and **automatically downloads and installs it** if it is not already present on your machine.
 
 During installation you can optionally:
 - Create a desktop shortcut
@@ -112,8 +113,8 @@ Optionally, delete your personal state folder to remove saved tabs:
 ## Troubleshooting
 
 ### Application won't start
-- **Issue**: Missing .NET runtime (build-from-source installation only)
-- **Solution**: Install [.NET 9.0 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/9.0), or use the self-contained installer from the [Releases page](https://github.com/kormanm/MdReader/releases/latest)
+- **Issue**: Missing .NET 9.0 Desktop Runtime
+- **Solution**: Run the installer again — it will detect and install the missing runtime. Alternatively, install it manually from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/9.0)
 
 ### Files won't open
 - **Issue**: Incorrect file association
