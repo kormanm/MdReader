@@ -8,7 +8,7 @@
 #define MyAppPublisher "MdReader"
 #define MyAppURL "https://github.com/kormanm/MdReader"
 #define MyAppExeName "MdReader.exe"
-#define DotNetDownloadUrl "https://dotnetcli.azureedge.net/dotnet/WindowsDesktop/9.0/windowsdesktop-runtime-latest-win-x64.exe"
+#define DotNetDownloadUrl "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/9.0/windowsdesktop-runtime-latest-win-x64.exe"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
