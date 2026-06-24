@@ -4,7 +4,7 @@
 param(
     [string]$Configuration = "Release",
     [string]$Runtime = "win-x64",
-    [switch]$SelfContained = $false
+    [switch]$SelfContained = $true
 )
 
 Write-Host "Building MdReader..." -ForegroundColor Cyan
