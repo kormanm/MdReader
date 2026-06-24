@@ -9,8 +9,8 @@ echo.
 
 cd ..\MdReader
 
-REM Build and publish the application
-dotnet publish -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=false -p:PublishReadyToRun=true
+REM Build and publish the application (self-contained: bundles .NET runtime)
+dotnet publish -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=true -p:PublishReadyToRun=true
 
 if %ERRORLEVEL% neq 0 (
     echo.
