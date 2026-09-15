@@ -396,6 +396,9 @@ public partial class MainWindow : Window
 
         var contextMenu = new ContextMenu();
 
+        var reloadMenuItem = new MenuItem { Header = "Reload" };
+        reloadMenuItem.Click += TabHeaderReload_Click;
+
         var openFolderMenuItem = new MenuItem { Header = "Open containing folder in Explorer" };
         openFolderMenuItem.Click += TabHeaderOpenContainingFolder_Click;
 
@@ -405,6 +408,7 @@ public partial class MainWindow : Window
         var copyFullPathMenuItem = new MenuItem { Header = "Copy full path to clipboard" };
         copyFullPathMenuItem.Click += TabHeaderCopyFullPath_Click;
 
+        contextMenu.Items.Add(reloadMenuItem);
         contextMenu.Items.Add(openFolderMenuItem);
         contextMenu.Items.Add(copyFolderPathMenuItem);
         contextMenu.Items.Add(copyFullPathMenuItem);
@@ -495,6 +499,75 @@ public partial class MainWindow : Window
         }
 
         return null;
+    }
+
+    private async void TabHeaderReload_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem ||
+            menuItem.Parent is not ContextMenu contextMenu ||
+            contextMenu.PlacementTarget is not FrameworkElement headerElement)
+        {
+            return;
+        }
+
+        var tabItem = FindTabItemFromHeaderElement(headerElement);
+        if (tabItem?.Tag is not string sourcePath || string.IsNullOrWhiteSpace(sourcePath))
+        {
+            return;
+        }
+
+        await ReloadTabAsync(tabItem, sourcePath);
+    }
+
+    private async Task ReloadTabAsync(TabItem tab, string sourcePath)
+    {
+        try
+        {
+            string content;
+            string title;
+
+            if (sourcePath.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                sourcePath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                using var httpClient = new HttpClient
+                {
+                    Timeout = TimeSpan.FromSeconds(30)
+                };
+                content = await httpClient.GetStringAsync(sourcePath);
+
+                title = Path.GetFileName(new Uri(sourcePath).LocalPath);
+                if (string.IsNullOrWhiteSpace(title))
+                {
+                    title = "Remote Document";
+                }
+            }
+            else
+            {
+                if (!File.Exists(sourcePath))
+                {
+                    MessageBox.Show($"File not found: {sourcePath}", "File Not Found", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                content = File.ReadAllText(sourcePath);
+                title = Path.GetFileName(sourcePath);
+            }
+
+            if (tab.Content is ScrollViewer scrollViewer && scrollViewer.Content is MarkdownViewer viewer)
+            {
+                viewer.Markdown = content;
+                scrollViewer.ScrollToHome();
+            }
+
+            if (tab.Header is StackPanel panel && panel.Children.OfType<TextBlock>().FirstOrDefault() is TextBlock textBlock)
+            {
+                textBlock.Text = title;
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error reloading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void TabHeaderOpenContainingFolder_Click(object sender, RoutedEventArgs e)
