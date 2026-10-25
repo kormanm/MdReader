@@ -81,3 +81,65 @@ test('HTML in diagram labels cannot execute script', async () => {
     assert.equal(await page.locator('#diagram [onerror], #diagram script').count(), 0);
     await page.close();
 });
+
+test('fits on resize, zooms, pans by dragging, and resets with Fit', async () => {
+    const page = await diagramPage();
+    await page.setViewportSize({ width: 600, height: 700 });
+    await page.evaluate(source => window.sendDiagram(source),
+        fs.readFileSync(path.join(__dirname, 'fixtures/workflow.mmd'), 'utf8'));
+    await page.waitForSelector('#diagram.ready svg');
+    const fits = () => page.evaluate(() => {
+        const viewport = document.getElementById('diagram');
+        return viewport.scrollWidth <= viewport.clientWidth + 1 &&
+            viewport.scrollHeight <= viewport.clientHeight + 1;
+    });
+    assert.ok(await fits());
+    const initialWidth = await page.locator('#diagram svg').evaluate(svg => svg.getBoundingClientRect().width);
+    await page.setViewportSize({ width: 350, height: 700 });
+    await page.waitForFunction(width => document.querySelector('#diagram svg').getBoundingClientRect().width < width,
+        initialWidth);
+    assert.ok(await fits());
+    await page.setViewportSize({ width: 900, height: 700 });
+    await page.waitForFunction(width => document.querySelector('#diagram svg').getBoundingClientRect().width > width,
+        initialWidth);
+    assert.ok(await fits());
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    assert.equal(await page.locator('#zoom-level').innerText(), '125%');
+    await page.getByRole('button', { name: 'Zoom out', exact: true }).click();
+    assert.equal(await page.locator('#zoom-level').innerText(), '100%');
+    for (let i = 0; i < 10; i++) await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    const before = await page.locator('#diagram').evaluate(viewport => {
+        viewport.scrollTo(0, 0);
+        return { width: viewport.scrollWidth, height: viewport.scrollHeight,
+            clientWidth: viewport.clientWidth, clientHeight: viewport.clientHeight };
+    });
+    assert.ok(before.width > before.clientWidth);
+    assert.ok(before.height > before.clientHeight);
+    const bounds = await page.locator('#diagram').boundingBox();
+    await page.mouse.move(bounds.x + 200, bounds.y + 80);
+    await page.mouse.down();
+    await page.mouse.move(bounds.x + 80, bounds.y + 30, { steps: 5 });
+    await page.mouse.up();
+    const scroll = await page.locator('#diagram').evaluate(viewport => [viewport.scrollLeft, viewport.scrollTop]);
+    assert.ok(scroll[0] > 50 && scroll[1] > 20);
+    await page.getByRole('button', { name: 'Fit', exact: true }).click();
+    assert.equal(await page.locator('#zoom-level').innerText(), '100%');
+    assert.ok(await fits());
+    assert.equal(await page.locator('#diagram').evaluate(viewport => viewport.scrollLeft + viewport.scrollTop), 0);
+    await page.close();
+});
+
+test('tall diagrams fit the host window height and refit when the host shrinks', async () => {
+    const page = await diagramPage();
+    await page.evaluate(() => window.sendDiagram('flowchart TB\n' +
+        Array.from({ length: 15 }, (_, i) => `N${i} --> N${i + 1}`).join('\n')));
+    await page.waitForSelector('#diagram.ready svg');
+    const initialHeight = await page.locator('#diagram svg').evaluate(svg => svg.getBoundingClientRect().height);
+    await page.evaluate(() => window.sendDiagram({ type: 'viewport', height: 400 }));
+    await page.waitForFunction(height => document.querySelector('#diagram svg').getBoundingClientRect().height < height,
+        initialHeight);
+    assert.ok(await page.locator('#diagram').evaluate(viewport =>
+        viewport.scrollHeight <= viewport.clientHeight + 1));
+    assert.ok(await page.evaluate(() => window.diagramHeight < 300));
+    await page.close();
+});

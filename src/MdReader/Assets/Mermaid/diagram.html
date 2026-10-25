@@ -4,13 +4,28 @@
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'">
   <style>
-    body { margin: 0; padding: 8px; font: 14px 'Segoe UI', sans-serif; }
-    #diagram { overflow: auto; }
-    #diagram svg { max-width: none !important; }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; padding: 8px; font: 14px 'Segoe UI', sans-serif; overflow: hidden; }
+    #toolbar { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    button { padding: 4px 10px; cursor: pointer; }
+    #zoom-level { min-width: 48px; text-align: center; }
+    #diagram { overflow: auto; width: 100%; border: 1px solid #ddd; touch-action: none; }
+    #diagram.ready { cursor: grab; }
+    #diagram.dragging { cursor: grabbing; user-select: none; }
+    #diagram svg { display: block; max-width: none !important; margin: auto; }
     pre { white-space: pre-wrap; }
   </style>
   <script src="mermaid.min.js" defer></script>
   <script src="diagram.js" defer></script>
 </head>
-<body><div id="diagram" role="img" aria-label="Mermaid diagram"></div></body>
+<body>
+  <div id="toolbar" role="group" aria-label="Diagram zoom" hidden>
+    <button id="zoom-out" type="button" aria-label="Zoom out">−</button>
+    <output id="zoom-level" aria-live="polite">100%</output>
+    <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+    <button id="fit" type="button">Fit</button>
+  </div>
+  <div id="diagram" role="region" aria-label="Mermaid diagram" tabindex="0"></div>
+</body>
 </html>

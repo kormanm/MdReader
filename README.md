@@ -34,8 +34,11 @@ flowchart LR
 ```
 ````
 
-Diagrams render in place among the surrounding Markdown. Wide diagrams have their
-own horizontal scrollbar; `<br/>` creates a new line within a node label. Plain
+Diagrams render in place among the surrounding Markdown and initially fit the
+window. Each diagram has **−**, **+**, and **Fit** controls. Zoomed diagrams have
+horizontal and vertical scrollbars and support click-and-drag panning. Resizing
+the window recomputes the fit while preserving the selected zoom level (100%
+means fit). `<br/>` creates a new line within a node label. Plain
 code blocks keep their existing appearance. Invalid diagrams show an error and
 their original source.
 

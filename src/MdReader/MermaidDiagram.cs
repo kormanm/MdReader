@@ -15,6 +15,8 @@ internal sealed class MermaidDiagram : Grid
     private readonly string _source;
     private readonly TextBox _fallback;
     private WebView2? _browser;
+    private Window? _owner;
+    private bool _pageReady;
     private static Task<CoreWebView2Environment>? _environment;
 
     public MermaidDiagram(string source)
@@ -33,6 +35,9 @@ internal sealed class MermaidDiagram : Grid
         Loaded += LoadDiagram;
         Unloaded += (_, _) =>
         {
+            if (_owner != null) _owner.SizeChanged -= OwnerSizeChanged;
+            _owner = null;
+            _pageReady = false;
             var browser = _browser;
             _browser = null;
             if (browser != null)
@@ -48,6 +53,8 @@ internal sealed class MermaidDiagram : Grid
         if (_browser != null) return;
         var browser = new WebView2 { Height = 280, Visibility = Visibility.Hidden };
         _browser = browser;
+        _owner = Window.GetWindow(this);
+        if (_owner != null) _owner.SizeChanged += OwnerSizeChanged;
         Children.Add(browser);
         try
         {
@@ -85,6 +92,8 @@ internal sealed class MermaidDiagram : Grid
                     ShowError("Could not load the bundled Mermaid renderer.");
                     return;
                 }
+                _pageReady = true;
+                SendViewport();
                 core.PostWebMessageAsString(_source);
             };
             core.WebMessageReceived += (_, args) =>
@@ -111,6 +120,15 @@ internal sealed class MermaidDiagram : Grid
     private static bool IsAssetUri(string value) =>
         Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
         uri.Scheme == Uri.UriSchemeHttps && uri.Host == AssetHost;
+
+    private void OwnerSizeChanged(object sender, SizeChangedEventArgs e) => SendViewport();
+
+    private void SendViewport()
+    {
+        if (_pageReady && _browser?.CoreWebView2 != null)
+            _browser.CoreWebView2.PostWebMessageAsJson(System.Text.Json.JsonSerializer.Serialize(
+                new { type = "viewport", height = _owner?.ActualHeight ?? 800 }));
+    }
 
     private void ShowError(string message)
     {
