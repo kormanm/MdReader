@@ -339,14 +339,14 @@ public partial class MainWindow : Window
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled
         };
 
+        var pipelineBuilder = new MarkdownPipelineBuilder().UseSupportedExtensions();
+        pipelineBuilder.Extensions.Add(new MermaidExtension());
         var viewer = new MarkdownViewer
         {
             Markdown = markdownContent,
             Margin = new Thickness(_currentHorizontalMargin, 10, _currentHorizontalMargin, 10),
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            Pipeline = new MarkdownPipelineBuilder()
-                .UseSupportedExtensions()
-                .Build()
+            Pipeline = pipelineBuilder.Build()
         };
 
         // Handle hyperlinks

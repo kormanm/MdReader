@@ -17,6 +17,35 @@ A lightweight, free Windows desktop application for reading and displaying Markd
   - Click Markdown links to navigate in the same tab
   - External links open in your default browser
 - **Modern UI**: Clean, intuitive interface built with WPF
+- **Mermaid diagrams**: Render flowcharts and other Mermaid diagrams inside Markdown, offline
+
+### Inline workflows and diagrams
+
+Put diagrams in a fenced code block with the language `mermaid`:
+
+````markdown
+```mermaid
+flowchart LR
+  T0[Today<br/>legacy readers + saver] --> T1
+  T1[Phase 1<br/>secrets, pooling and metrics] --> T2
+  T2[Side-by-side<br/>per-group switch and switch-back] --> T3
+  T3[Phase 2<br/>separate alerts and rollup] --> T4
+  T4[End state<br/>Meter Reader for all profiles]
+```
+````
+
+Diagrams render in place among the surrounding Markdown. Wide diagrams have their
+own horizontal scrollbar; `<br/>` creates a new line within a node label. Plain
+code blocks keep their existing appearance. Invalid diagrams show an error and
+their original source.
+
+Diagram rendering requires the **Microsoft Edge WebView2 Evergreen Runtime**
+on Windows (normally present on Windows 10/11). If it is missing, install it from
+[Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/) and restart
+MdReader. The Mermaid library is bundled with the application, so rendering does
+not send document contents to a remote service or require an Internet connection.
+When distributing publish output, include the `Assets/Mermaid` folder alongside
+the executable, including for single-file builds.
 
 ## Download & Install
 

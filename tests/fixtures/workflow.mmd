@@ -1,0 +1,6 @@
+flowchart LR
+  T0[T0 · today<br/>legacy readers + legacy saver<br/>.NET 8: API, PdfReports, AutoReports, Alerts, Zenner, Watchdog] --> T1
+  T1[T1 · end of phase 1<br/>secrets, DB pooling/retry, metrics<br/>staging + simulator<br/>DataRecorderCheck services + saver on .NET 8<br/>legacy console readers still spawned] --> T2
+  T2[T2 · side-by-side<br/>new Meter Reader runs selected profiles / site groups<br/>old readers run the rest<br/>per-group switch and switch-back] --> T3
+  T3[T3 · end of phase 2<br/>gatekeeper pipeline, alerts + rollup separated,<br/>mail queue fixes, Reports Generic retired] --> T4
+  T4[T4 · end state<br/>Meter Reader for all profiles<br/>check services and consoles removed<br/>all services .NET 8/10, legacy code deleted]
