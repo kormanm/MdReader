@@ -1,0 +1,4 @@
+Mermaid 12.2.0
+Source: https://registry.npmjs.org/mermaid/-/mermaid-12.2.0.tgz
+Integrity: sha512-w7nr/SFrLO7BaVTs3dQTvYSV6nYSBj0Yy9DjBhsIJtAcHqRzXSq4Pg32ujHZ/AdWsAMNEvvhbm5dt9E2tOiHzw==
+MIT license; see LICENSE.

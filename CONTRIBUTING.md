@@ -77,6 +77,23 @@ Thank you for your interest in contributing to MdReader! This document provides 
 
 ### Testing
 
+Mermaid's bundled browser renderer has regression tests, including a five-stage
+migration flowchart, multiline labels, invalid input recovery, and HTML injection:
+
+```bash
+cd tests
+npm ci
+npx playwright install chromium
+npm test
+```
+
+To use an installed Chromium instead, set `CHROMIUM_PATH` to its executable path.
+These tests run on Linux too; the WPF integration still needs Windows validation.
+On Windows, open a Markdown file containing ordinary text and several fenced
+`mermaid` blocks. Check tab switching, reload, closing tabs, diagram scrolling,
+zoom, and the readable fallback when WebView2 Runtime is unavailable. The Mermaid
+assets must also be present in published output.
+
 - Test your changes on Windows 10 and Windows 11 if possible
 - Test with various Markdown files (local and remote)
 - Test drag-and-drop functionality
