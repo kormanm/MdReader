@@ -24,7 +24,7 @@ build-installer.bat
 - **Start Menu Shortcut**
 - **Optional Desktop Shortcut**
 - **File Association** for .md and .markdown files
-- **.NET 9 Runtime** (bundled, no separate installation needed)
+- **x64 .NET 9 Desktop Runtime** (downloaded and installed from Microsoft only if missing)
 
 ## Files in this Directory
 
@@ -95,4 +95,6 @@ After building, you can distribute the installer file:
 - Share directly (single .exe file)
 - Host on your website
 
-The installer is a single .exe file that includes everything needed.
+The installer is a single .exe file. Internet access is needed to install the .NET
+Desktop Runtime when missing; machines that already have it can install offline.
+WebView2 Runtime is also needed for Mermaid diagrams.

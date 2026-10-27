@@ -39,7 +39,7 @@ Or manually:
 
 ```powershell
 cd ..\MdReader
-dotnet publish -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=true -p:PublishReadyToRun=true
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -p:PublishReadyToRun=false
 ```
 
 The output will be in: `..\MdReader\bin\Release\net9.0-windows\win-x64\publish\`
@@ -59,8 +59,43 @@ The installer includes:
 - ? **Desktop Icon** - Optional desktop shortcut
 - ? **File Associations** - Associates .md and .markdown files with MdReader
 - ? **Open With Menu** - Adds MdReader to the "Open With" context menu
-- ? **Self-Contained** - Includes .NET 9 runtime (no separate installation needed)
+- ? **Small package** - Reuses the shared x64 .NET 9 Desktop Runtime, downloading and installing it from Microsoft only when missing
 - ? **Uninstaller** - Clean uninstallation with registry cleanup
+
+## Runtime prerequisite
+
+The Inno Setup installer checks the machine-wide x64 Windows Desktop runtime
+registry entries for a stable 9.0.x version. An SDK is not required. The base .NET
+runtime, an x86 Desktop Runtime, previews, or .NET 10 alone do not satisfy this check.
+If missing, setup downloads the latest 9.0 x64 Desktop Runtime from
+`https://aka.ms/dotnet/9.0/windowsdesktop-runtime-win-x64.exe`, validates its
+Authenticode signature and Microsoft publisher, and runs it with
+`/install /quiet /norestart`. Setup rechecks runtime registration before proceeding.
+
+Internet access is needed only if the runtime is missing. Download, signature,
+or runtime installation errors stop application installation and allow retrying.
+For an offline machine, install the x64 .NET 9 Desktop Runtime first. A required
+reboot is passed to setup's final restart prompt; launch is suppressed until then.
+Uninstalling MdReader leaves the shared runtime installed for other applications.
+WebView2 Runtime is a separate prerequisite for Mermaid diagrams.
+
+The build scripts clean the publish folder to avoid packaging old self-contained
+files. To reclaim space from a previously installed self-contained MdReader,
+uninstall that version before installing this smaller package; an in-place upgrade
+does not delete old bundled runtime files. Session state in the user's profile is
+separate from the application directory.
+
+### Windows validation checklist
+
+- On a clean Windows VM, install with no x64 9.0 Desktop Runtime: verify download,
+  Microsoft signature validation, runtime installation, and application launch.
+- Repeat with a stable x64 9.0 Desktop Runtime: no runtime download should occur.
+- Repeat with only x86 Desktop, base .NET, a preview, or .NET 10: prerequisite
+  installation must still occur.
+- Block network access when the runtime is missing: setup must stop before copying
+  application files, then succeed after connectivity is restored and setup retried.
+- Exercise runtime failure and reboot-required cases, including silent setup;
+  confirm setup does not launch MdReader before the required restart.
 
 ## File Associations
 

@@ -58,6 +58,11 @@ the executable, including for single-file builds.
 2. Run the installer — if .NET 9.0 Desktop Runtime is not already on your machine the installer will download and install it automatically
 3. (Optional) Associate `.md` and `.markdown` files with MdReader during setup
 
+Installer builds use a small framework-dependent package. Setup reuses an existing
+x64 .NET 9 Desktop Runtime, or downloads it from Microsoft, verifies its signature,
+and installs it when missing. Internet access is needed only for that download.
+The shared runtime's disk usage is separate from MdReader's application folder.
+
 ## Quick Start
 
 ### Requirements

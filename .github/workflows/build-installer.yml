@@ -1,6 +1,11 @@
 name: Build Installer
 
 on:
+  pull_request:
+    paths:
+      - 'src/MdReader/**'
+      - 'src/MdReader.Installer/**'
+      - '.github/workflows/build-installer.yml'
   push:
     tags:
       - 'v*'
@@ -31,7 +36,7 @@ jobs:
       id: version
       shell: pwsh
       run: |
-        $version = "1.0.0"
+        $version = "1.2.2"
         $tag = ""
         $createRelease = $false
 
@@ -68,6 +73,30 @@ jobs:
         -Configuration Release
         -AppVersion "${{ steps.version.outputs.version }}"
       shell: pwsh
+
+    - name: Smoke test installer on Windows
+      shell: pwsh
+      run: |
+        $installer = Get-Item "installer-output/MdReaderSetup-${{ steps.version.outputs.version }}.exe"
+        $target = Join-Path $env:RUNNER_TEMP "MdReader-smoke"
+        $log = Join-Path $env:RUNNER_TEMP "MdReader-setup.log"
+        foreach ($attempt in 1..2) {
+          $process = Start-Process -FilePath $installer.FullName -Wait -PassThru -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/RESTARTEXITCODE=3010',
+            "/DIR=`"$target`"", "/LOG=`"$log`""
+          )
+          if ($process.ExitCode -notin @(0, 3010)) {
+            Get-Content $log -ErrorAction SilentlyContinue
+            throw "Installer failed with exit code $($process.ExitCode)"
+          }
+          if (-not (Test-Path "$target/MdReader.exe")) { throw "Application was not installed" }
+          if (-not (Test-Path "$target/Assets/Mermaid/mermaid.min.js")) { throw "Diagram assets were not installed" }
+          if (Test-Path "$target/coreclr.dll") { throw "Payload unexpectedly bundles the .NET runtime" }
+          $runtimes = & "$env:ProgramFiles/dotnet/dotnet.exe" --list-runtimes
+          if (-not ($runtimes -match '^Microsoft.WindowsDesktop.App 9\.0\.\d+ ')) {
+            throw "The required x64 .NET 9 Desktop Runtime is missing"
+          }
+        }
 
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4

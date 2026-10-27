@@ -5,6 +5,14 @@ All notable changes to the MdReader project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-10-27
+
+### Changed
+- Publish a smaller framework-dependent application instead of bundling .NET.
+- Install the x64 .NET 9 Desktop Runtime from Microsoft only when missing, with
+  signature verification, installation failure handling, and restart support.
+- Add Windows installer smoke checks for installation and reinstallation.
+
 ## [1.0.0] - 2025-01-11
 
 ### Added - Initial Release
