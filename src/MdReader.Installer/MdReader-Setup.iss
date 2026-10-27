@@ -44,7 +44,7 @@ Name: "fileassoc"; Description: "Associate .md and .markdown files with {#MyAppN
 
 [Files]
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
-; Main executable and DLLs (self-contained: .NET runtime is bundled)
+; Framework-dependent application; PrepareToInstall installs the shared runtime if needed.
 Source: "..\MdReader\bin\Release\net9.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Icon file
 Source: "..\MdReader\app.ico"; DestDir: "{app}"; Flags: ignoreversion
@@ -70,4 +70,121 @@ Root: HKCR; Subkey: "Applications\{#MyAppExeName}\SupportedTypes"; ValueType: st
 Root: HKCR; Subkey: "Applications\{#MyAppExeName}\SupportedTypes"; ValueType: string; ValueName: ".txt"; ValueData: ""; Tasks: fileassoc
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent; Check: CanLaunchApplication
+
+[Code]
+const
+  DesktopRuntimeKey = 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App';
+  DesktopRuntimeUrl = 'https://aka.ms/dotnet/9.0/windowsdesktop-runtime-win-x64.exe';
+  DesktopRuntimeFile = 'windowsdesktop-runtime-win-x64.exe';
+
+var
+  RuntimeDownloadPage: TDownloadWizardPage;
+  RuntimeRestartRequired: Boolean;
+
+function DesktopRuntimeInstalled: Boolean;
+var
+  Versions: TArrayOfString;
+  I: Integer;
+  Installed: Cardinal;
+begin
+  Result := False;
+  { WPF requires the x64 Windows Desktop runtime, not just Microsoft.NETCore.App.
+    .NET 10 alone does not satisfy the app's default major-version roll-forward policy. }
+  if RegGetValueNames(HKLM64, DesktopRuntimeKey, Versions) then
+    for I := 0 to GetArrayLength(Versions) - 1 do
+      if (Copy(Versions[I], 1, 4) = '9.0.') and
+         (StrToIntDef(Copy(Versions[I], 5, Length(Versions[I])), -1) >= 0) then
+        if RegQueryDWordValue(HKLM64, DesktopRuntimeKey, Versions[I], Installed) then
+          if Installed = 1 then begin
+            Result := True;
+            Exit;
+          end;
+end;
+
+procedure InitializeWizard;
+begin
+  RuntimeDownloadPage := CreateDownloadPage(
+    'Installing .NET 9 Desktop Runtime',
+    'MdReader needs the x64 .NET 9 Desktop Runtime. Downloading it from Microsoft.', nil);
+  RuntimeDownloadPage.ShowBaseNameInsteadOfUrl := True;
+end;
+
+function HasMicrosoftSignature(const FileName: String): Boolean;
+var
+  Command, EscapedPath: String;
+  ExitCode: Integer;
+begin
+  EscapedPath := FileName;
+  StringChangeEx(EscapedPath, '''', '''''', True);
+  Command := '-NoProfile -NonInteractive -Command "' +
+    '$s = Get-AuthenticodeSignature -LiteralPath ''' + EscapedPath + '''; ' +
+    'if ($s.Status -eq ''Valid'' -and $null -ne $s.SignerCertificate -and ' +
+    '$s.SignerCertificate.GetNameInfo(' +
+    '[System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false) ' +
+    '-eq ''Microsoft Corporation'') { exit 0 }; exit 1"';
+  Result := False;
+  if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
+    Command, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+    Result := ExitCode = 0;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  RuntimePath: String;
+  ExitCode: Integer;
+begin
+  Result := '';
+  if DesktopRuntimeInstalled then Exit;
+  RuntimeDownloadPage.Clear;
+  RuntimeDownloadPage.Add(DesktopRuntimeUrl, DesktopRuntimeFile, '');
+  RuntimeDownloadPage.Show;
+  try
+    try
+      RuntimeDownloadPage.Download;
+    except
+      Result := 'Could not download .NET 9 Desktop Runtime. Check your Internet connection ' +
+        'and try again, or install the x64 .NET 9 Desktop Runtime manually. ' + GetExceptionMessage;
+      Exit;
+    end;
+  finally
+    RuntimeDownloadPage.Hide;
+  end;
+
+  RuntimePath := ExpandConstant('{tmp}\') + DesktopRuntimeFile;
+  if not HasMicrosoftSignature(RuntimePath) then begin
+    DeleteFile(RuntimePath);
+    Result := 'The .NET runtime download does not have a valid Microsoft signature. ' +
+      'Installation was stopped. Check Windows certificate trust and try again.';
+    Exit;
+  end;
+
+  WizardForm.StatusLabel.Caption := 'Installing .NET 9 Desktop Runtime...';
+  if not Exec(RuntimePath, '/install /quiet /norestart', '', SW_HIDE,
+    ewWaitUntilTerminated, ExitCode) then begin
+    Result := 'Could not start the .NET 9 Desktop Runtime installer.';
+    Exit;
+  end;
+  if (ExitCode <> 0) and (ExitCode <> 3010) then begin
+    Result := Format('.NET 9 Desktop Runtime installation failed (exit code %d). ' +
+      'Install the x64 .NET 9 Desktop Runtime manually, then run MdReader setup again.', [ExitCode]);
+    Exit;
+  end;
+  if not DesktopRuntimeInstalled then begin
+    Result := 'The x64 .NET 9 Desktop Runtime was not detected after installation. ' +
+      'Restart Windows if requested, then run MdReader setup again.';
+    Exit;
+  end;
+  RuntimeRestartRequired := ExitCode = 3010;
+  { Setup can finish copying the app before requesting the restart. }
+end;
+
+function NeedRestart: Boolean;
+begin
+  Result := RuntimeRestartRequired;
+end;
+
+function CanLaunchApplication: Boolean;
+begin
+  Result := not RuntimeRestartRequired;
+end;

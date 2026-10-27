@@ -29,7 +29,7 @@ cd src\MdReader.Installer
 2. **Build the application:**
    ```cmd
    cd src\MdReader
-   dotnet publish -c Release -r win-x64 -p:SelfContained=true
+   dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -p:PublishReadyToRun=false
    ```
 
 3. **Create installer:**
@@ -41,7 +41,7 @@ cd src\MdReader.Installer
 
 ## Installer Features
 
-? Self-contained (includes .NET 9 runtime)  
+? Small framework-dependent package; installs the x64 .NET 9 Desktop Runtime when missing
 ? File associations (.md, .markdown)  
 ? Start menu shortcuts  
 ? Desktop shortcut (optional)  

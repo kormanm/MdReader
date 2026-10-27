@@ -7,10 +7,12 @@ echo Building MdReader Application
 echo ========================================
 echo.
 
-cd ..\MdReader
+cd /d "%~dp0..\MdReader"
 
-REM Build and publish the application (self-contained: bundles .NET runtime)
-dotnet publish -c Release -r win-x64 -p:PublishSingleFile=false -p:SelfContained=true -p:PublishReadyToRun=true
+REM Remove old self-contained files before publishing the smaller application.
+if exist "bin\Release\net9.0-windows\win-x64\publish" rmdir /s /q "bin\Release\net9.0-windows\win-x64\publish"
+REM The installer downloads the shared Desktop Runtime only when it is missing.
+dotnet publish -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -p:PublishReadyToRun=false -p:DebugType=None -p:DebugSymbols=false
 
 if %ERRORLEVEL% neq 0 (
     echo.
