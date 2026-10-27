@@ -36,7 +36,7 @@ jobs:
       id: version
       shell: pwsh
       run: |
-        $version = "1.0.0"
+        $version = "1.2.2"
         $tag = ""
         $createRelease = $false
 
