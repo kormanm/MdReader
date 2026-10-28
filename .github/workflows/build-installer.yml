@@ -6,6 +6,7 @@ on:
       - 'src/MdReader/**'
       - 'src/MdReader.Installer/**'
       - 'tests/Verify-RuntimeSignature.Tests.ps1'
+      - 'tests/Verify-RuntimeSignature.Integration.Tests.ps1'
       - '.github/workflows/build-installer.yml'
   push:
     tags:
@@ -70,7 +71,9 @@ jobs:
 
     - name: Test runtime publisher verification
       shell: pwsh
-      run: ./tests/Verify-RuntimeSignature.Tests.ps1
+      run: |
+        ./tests/Verify-RuntimeSignature.Tests.ps1
+        ./tests/Verify-RuntimeSignature.Integration.Tests.ps1
 
     - name: Build installer
       run: >

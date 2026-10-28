@@ -21,6 +21,12 @@ function Test-MicrosoftRuntimeSignature($Signature) {
 if ($MyInvocation.InvocationName -ne '.') {
     try {
         $ErrorActionPreference = 'Stop'
+        # Actions launches setup from pwsh, whose inherited PSModulePath can point
+        # Windows PowerShell 5.1 at incompatible PowerShell 7 module manifests.
+        # Only use modules shipped with the engine that is running this verifier.
+        $env:PSModulePath = [System.IO.Path]::Combine($PSHOME, 'Modules')
+        Import-Module ([System.IO.Path]::Combine($PSHOME,
+            'Modules/Microsoft.PowerShell.Security/Microsoft.PowerShell.Security.psd1')) -ErrorAction Stop
         $signature = Get-AuthenticodeSignature -LiteralPath $InstallerPath
         $details = "Status: $($signature.Status)`r`n" +
             "Status message: $($signature.StatusMessage)`r`n" +
@@ -30,7 +36,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit 1
     } catch {
         if ($LogPath) {
-            Set-Content -LiteralPath $LogPath -Value $_.Exception.Message -Encoding UTF8
+            [System.IO.File]::WriteAllText($LogPath,
+                "Engine: $($PSVersionTable.PSVersion); PSHOME: $PSHOME`r`n$($_.Exception.ToString())")
         }
         exit 1
     }
