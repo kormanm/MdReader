@@ -7,6 +7,14 @@ param(
     [string]$AppVersion = ""
 )
 
+$ErrorActionPreference = 'Stop'
+$projectPath = Join-Path $PSScriptRoot '..\MdReader\MdReader.csproj'
+$sourceVersion = ([xml](Get-Content $projectPath -Raw)).Project.PropertyGroup.Version | Select-Object -First 1
+if ([string]::IsNullOrWhiteSpace($AppVersion)) { $AppVersion = $sourceVersion }
+if ($AppVersion -notmatch '^\d+\.\d+\.\d+$' -or $AppVersion -ne $sourceVersion) {
+    throw 'Installer version must match the stable Version in MdReader.csproj.'
+}
+
 # Step 1: Build and publish the application
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "Step 1: Building and Publishing MdReader" -ForegroundColor Cyan
@@ -67,7 +75,8 @@ if ([string]::IsNullOrEmpty($InnoSetupPath) -or -not (Test-Path $InnoSetupPath))
 $scriptPath = Join-Path $PSScriptRoot "MdReader-Setup.iss"
 Write-Host "Compiling installer script: $scriptPath" -ForegroundColor Cyan
 
-$compileArgs = @()
+$publishPath = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\MdReader\bin\$Configuration\net9.0-windows\win-x64\publish"))
+$compileArgs = @("/DPublishDir=$publishPath")
 if (-not [string]::IsNullOrWhiteSpace($AppVersion)) {
     Write-Host "Using installer version override: $AppVersion" -ForegroundColor Cyan
     $compileArgs += "/DMyAppVersion=$AppVersion"

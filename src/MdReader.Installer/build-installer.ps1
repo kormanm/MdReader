@@ -3,9 +3,11 @@
 
 param(
     [string]$Configuration = "Release",
-    [string]$Runtime = "win-x64",
+    [ValidateSet('win-x64')][string]$Runtime = "win-x64",
     [switch]$SelfContained
 )
+
+$ErrorActionPreference = 'Stop'
 
 Write-Host "Building MdReader..." -ForegroundColor Cyan
 
@@ -54,5 +56,5 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "4. Find the installer in ../../installer-output/" -ForegroundColor White
 } else {
     Write-Host "`nBuild failed!" -ForegroundColor Red
-    exit $LASTEXITCODE
+    throw "dotnet publish failed with exit code $LASTEXITCODE"
 }
