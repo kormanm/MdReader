@@ -5,10 +5,10 @@ on:
     paths:
       - 'src/MdReader/**'
       - 'src/MdReader.Installer/**'
-      - 'tests/Verify-RuntimeSignature.Tests.ps1'
-      - 'tests/Verify-RuntimeSignature.Integration.Tests.ps1'
+      - 'tests/**'
       - '.github/workflows/build-installer.yml'
   push:
+    branches: [main]
     tags:
       - 'v*'
   workflow_dispatch:
@@ -19,15 +19,25 @@ on:
         type: string
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: installer-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release: ${{ steps.version.outputs.release }}
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
@@ -37,32 +47,33 @@ jobs:
     - name: Resolve installer version
       id: version
       shell: pwsh
+      env:
+        REQUESTED_VERSION: ${{ inputs.version }}
       run: |
-        $version = "1.2.2"
-        $tag = ""
-        $createRelease = $false
-
-        if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-          $version = "${{ inputs.version }}".Trim()
-          if ([string]::IsNullOrWhiteSpace($version)) {
-            throw "A version is required for manual runs."
-          }
-          if ($version.StartsWith("v")) {
-            $version = $version.Substring(1)
-          }
-
-          $tag = "v$version"
-          $createRelease = $true
+        $version = ([xml](Get-Content src/MdReader/MdReader.csproj -Raw)).Project.PropertyGroup.Version | Select-Object -First 1
+        if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid source version' }
+        $release = $env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -or $env:GITHUB_REF -like 'refs/tags/v*'
+        if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch') {
+          if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Release dispatch must run on main' }
+          if ($env:REQUESTED_VERSION.Trim().TrimStart('v') -ne $version) { throw 'Requested version differs from source' }
         }
-        elseif ($env:GITHUB_REF -like "refs/tags/v*") {
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          $tag = $env:GITHUB_REF_NAME
-          $createRelease = $true
+        if ($release) {
+          if ($env:GITHUB_REF -like 'refs/tags/*' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Release tag differs from source version'
+          }
+          git fetch origin main
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch main' }
+          git merge-base --is-ancestor HEAD origin/main
+          if ($LASTEXITCODE -ne 0) { throw 'Release commit must be merged into main' }
+          $existing = git tag --list "v$version"
+          if ($existing) {
+            $tagCommit = git rev-list -n 1 "v$version"
+            $headCommit = git rev-parse HEAD
+            if ($tagCommit -ne $headCommit) { throw 'Existing release tag points to another commit' }
+          }
         }
-
-        "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        "create_release=$($createRelease.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "version=$version" >> $env:GITHUB_OUTPUT
+        "release=$($release.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
     - name: Install Inno Setup
       run: |
@@ -84,43 +95,41 @@ jobs:
 
     - name: Smoke test installer on Windows
       shell: pwsh
-      run: |
-        $installer = Get-Item "installer-output/MdReaderSetup-${{ steps.version.outputs.version }}.exe"
-        $target = Join-Path $env:RUNNER_TEMP "MdReader-smoke"
-        $log = Join-Path $env:RUNNER_TEMP "MdReader-setup.log"
-        foreach ($attempt in 1..2) {
-          $process = Start-Process -FilePath $installer.FullName -Wait -PassThru -ArgumentList @(
-            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/RESTARTEXITCODE=3010',
-            "/DIR=`"$target`"", "/LOG=`"$log`""
-          )
-          if ($process.ExitCode -notin @(0, 3010)) {
-            Get-Content $log -ErrorAction SilentlyContinue
-            throw "Installer failed with exit code $($process.ExitCode)"
-          }
-          if (-not (Test-Path "$target/MdReader.exe")) { throw "Application was not installed" }
-          if (-not (Test-Path "$target/Assets/Mermaid/mermaid.min.js")) { throw "Diagram assets were not installed" }
-          if (Test-Path "$target/coreclr.dll") { throw "Payload unexpectedly bundles the .NET runtime" }
-          $runtimes = & "$env:ProgramFiles/dotnet/dotnet.exe" --list-runtimes
-          if (-not ($runtimes -match '^Microsoft.WindowsDesktop.App 9\.0\.\d+ ')) {
-            throw "The required x64 .NET 9 Desktop Runtime is missing"
-          }
-        }
+      env:
+        APP_VERSION: ${{ steps.version.outputs.version }}
+      run: ./tests/Installer.Smoke.Tests.ps1 -Version $env:APP_VERSION
 
-    - name: Upload installer artifact
+    - name: Preserve installer diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: installer-diagnostics
+        path: installer-output/logs/
+        if-no-files-found: ignore
+
+    - name: Upload tested installer
       uses: actions/upload-artifact@v4
       with:
         name: MdReaderSetup-${{ steps.version.outputs.version }}
-        path: installer-output/*.exe
+        path: installer-output/MdReaderSetup-${{ steps.version.outputs.version }}.exe
         if-no-files-found: error
 
-    - name: Attach installer to GitHub release
-      if: steps.version.outputs.create_release == 'true'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: installer-output/*.exe
-        fail_on_unmatched_files: true
-        generate_release_notes: true
-        tag_name: ${{ steps.version.outputs.tag }}
-        target_commitish: ${{ github.sha }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  release:
+    needs: build
+    if: needs.build.outputs.release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MdReaderSetup-${{ needs.build.outputs.version }}
+          path: release
+      - name: Publish tested installer
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/MdReaderSetup-${{ needs.build.outputs.version }}.exe
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          tag_name: v${{ needs.build.outputs.version }}
+          target_commitish: ${{ github.sha }}

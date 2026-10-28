@@ -8,6 +8,9 @@
 #define MyAppPublisher "MdReader"
 #define MyAppURL "https://github.com/kormanm/MdReader"
 #define MyAppExeName "MdReader.exe"
+#ifndef PublishDir
+  #define PublishDir "..\MdReader\bin\Release\net9.0-windows\win-x64\publish"
+#endif
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -47,7 +50,7 @@ Name: "fileassoc"; Description: "Associate .md and .markdown files with {#MyAppN
 Source: "Verify-RuntimeSignature.ps1"; Flags: dontcopy
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 ; Framework-dependent application; PrepareToInstall installs the shared runtime if needed.
-Source: "..\MdReader\bin\Release\net9.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Icon file
 Source: "..\MdReader\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 
@@ -88,7 +91,6 @@ function DesktopRuntimeInstalled: Boolean;
 var
   Versions: TArrayOfString;
   I: Integer;
-  Installed: Cardinal;
 begin
   Result := False;
   { WPF requires the x64 Windows Desktop runtime, not just Microsoft.NETCore.App.
@@ -97,11 +99,13 @@ begin
     for I := 0 to GetArrayLength(Versions) - 1 do
       if (Copy(Versions[I], 1, 4) = '9.0.') and
          (StrToIntDef(Copy(Versions[I], 5, Length(Versions[I])), -1) >= 0) then
-        if RegQueryDWordValue(HKLM64, DesktopRuntimeKey, Versions[I], Installed) then
-          if Installed = 1 then begin
-            Result := True;
-            Exit;
-          end;
+        begin
+          { Version value names are the registration contract; do not assume a
+            particular data type or value payload for the runtime installer. }
+          Log('Detected x64 Windows Desktop Runtime ' + Versions[I]);
+          Result := True;
+          Exit;
+        end;
 end;
 
 procedure InitializeWizard;
@@ -135,11 +139,18 @@ end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
-  RuntimePath: String;
+  RuntimePath, RuntimeInstallLog, SetupLog: String;
   ExitCode: Integer;
+  Started: Boolean;
 begin
   Result := '';
-  if DesktopRuntimeInstalled then Exit;
+  #ifndef CIForceRuntimeBootstrap
+  if DesktopRuntimeInstalled then begin
+    Log('Desktop Runtime already installed; skipping download.');
+    Exit;
+  end;
+  #endif
+  Log('Bootstrapping x64 .NET 9 Desktop Runtime.');
   RuntimeDownloadPage.Clear;
   RuntimeDownloadPage.Add(DesktopRuntimeUrl, DesktopRuntimeFile, '');
   RuntimeDownloadPage.Show;
@@ -164,8 +175,14 @@ begin
   end;
 
   WizardForm.StatusLabel.Caption := 'Installing .NET 9 Desktop Runtime...';
-  if not Exec(RuntimePath, '/install /quiet /norestart', '', SW_HIDE,
-    ewWaitUntilTerminated, ExitCode) then begin
+  RuntimeInstallLog := ExpandConstant('{tmp}\desktop-runtime-install.log');
+  Started := Exec(RuntimePath, '/install /quiet /norestart /log ' + AddQuotes(RuntimeInstallLog),
+    '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
+  SetupLog := ExpandConstant('{log}');
+  if (SetupLog <> '') and FileExists(RuntimeInstallLog) then
+    FileCopy(RuntimeInstallLog, SetupLog + '.runtime.log', False);
+  Log(Format('Desktop Runtime installer process/error code: %d', [ExitCode]));
+  if not Started then begin
     Result := 'Could not start the .NET 9 Desktop Runtime installer.';
     Exit;
   end;
