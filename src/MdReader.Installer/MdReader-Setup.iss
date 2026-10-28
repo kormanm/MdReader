@@ -79,7 +79,6 @@ Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChang
 
 [Code]
 const
-  DesktopRuntimeKey = 'SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedfx\Microsoft.WindowsDesktop.App';
   DesktopRuntimeUrl = 'https://aka.ms/dotnet/9.0/windowsdesktop-runtime-win-x64.exe';
   DesktopRuntimeFile = 'windowsdesktop-runtime-win-x64.exe';
 
@@ -87,26 +86,7 @@ var
   RuntimeDownloadPage: TDownloadWizardPage;
   RuntimeRestartRequired: Boolean;
 
-function DesktopRuntimeInstalled: Boolean;
-var
-  Versions: TArrayOfString;
-  I: Integer;
-begin
-  Result := False;
-  { WPF requires the x64 Windows Desktop runtime, not just Microsoft.NETCore.App.
-    .NET 10 alone does not satisfy the app's default major-version roll-forward policy. }
-  if RegGetValueNames(HKLM64, DesktopRuntimeKey, Versions) then
-    for I := 0 to GetArrayLength(Versions) - 1 do
-      if (Copy(Versions[I], 1, 4) = '9.0.') and
-         (StrToIntDef(Copy(Versions[I], 5, Length(Versions[I])), -1) >= 0) then
-        begin
-          { Version value names are the registration contract; do not assume a
-            particular data type or value payload for the runtime installer. }
-          Log('Detected x64 Windows Desktop Runtime ' + Versions[I]);
-          Result := True;
-          Exit;
-        end;
-end;
+#include "DesktopRuntimeDetection.iss"
 
 procedure InitializeWizard;
 begin
@@ -180,7 +160,7 @@ begin
     '', SW_HIDE, ewWaitUntilTerminated, ExitCode);
   SetupLog := ExpandConstant('{log}');
   if (SetupLog <> '') and FileExists(RuntimeInstallLog) then
-    FileCopy(RuntimeInstallLog, SetupLog + '.runtime.log', False);
+    CopyFile(RuntimeInstallLog, SetupLog + '.runtime.log', False);
   Log(Format('Desktop Runtime installer process/error code: %d', [ExitCode]));
   if not Started then begin
     Result := 'Could not start the .NET 9 Desktop Runtime installer.';

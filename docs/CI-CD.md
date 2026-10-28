@@ -41,8 +41,10 @@ delegates to `build-and-create-installer.ps1`; there are no separate batch publi
 flags. Run the latter with `-Configuration Debug` if needed; it passes the actual
 publish directory to Inno Setup. Publish output is cleaned before each build.
 
-Runtime detection enumerates stable 9.0.x version names in the x64 Desktop shared
-framework registry key without assuming the marker values are DWORDs. Signature
+Runtime detection reads x64 `InstallLocation` in the 32-bit registry view, matching
+the .NET host, then checks stable 9.0.x Desktop framework directories and WPF files.
+It also checks the standard x64 Program Files location. Native fixture tests use
+the exact detection include compiled into production setup. Signature
 verification requires Windows Authenticode trust plus Microsoft organization,
 using the modules shipped with the PowerShell engine doing the verification.
 

@@ -20,10 +20,18 @@ function Invoke-Setup($Path, $LogName, $Arguments) {
         '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/RESTARTEXITCODE=3010', "/LOG=`"$log`""
     ) + $Arguments)
     if ($process.ExitCode -notin @(0, 3010)) {
-        Get-Content $log -ErrorAction SilentlyContinue
+        Get-Content $log -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
+        Get-Content "$log.runtime.log" -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_ }
         throw "Setup failed: $LogName, exit code $($process.ExitCode)"
     }
     return Get-Content $log -Raw
+}
+
+& $iscc "$PSScriptRoot/RuntimeDetection.Tests.iss"
+if ($LASTEXITCODE -ne 0) { throw 'Runtime detection fixture compilation failed' }
+$detectionLog = Invoke-Setup "$root/installer-output/runtime-detection-tests.exe" 'detection.log' @()
+if ($detectionLog -notmatch 'All runtime detection fixture checks passed') {
+    throw 'Runtime detection fixture tests did not execute'
 }
 
 $bootstrapLog = Invoke-Setup "$root/installer-output/bootstrap-test.exe" 'bootstrap.log' @("/DIR=`"$target`"")

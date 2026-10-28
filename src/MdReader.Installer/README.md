@@ -64,8 +64,10 @@ The installer includes:
 
 ## Runtime prerequisite
 
-The Inno Setup installer checks the machine-wide x64 Windows Desktop runtime
-registry entries for a stable 9.0.x version. An SDK is not required. The base .NET
+The Inno Setup installer reads the machine-wide x64 .NET installation location
+from the 32-bit registry view, matching the .NET host, and checks stable 9.0.x
+Desktop framework directories for WPF files. It also checks the standard x64
+Program Files location. An SDK is not required. The base .NET
 runtime, an x86 Desktop Runtime, previews, or .NET 10 alone do not satisfy this check.
 If missing, setup downloads the latest 9.0 x64 Desktop Runtime from
 `https://aka.ms/dotnet/9.0/windowsdesktop-runtime-win-x64.exe`, validates its
