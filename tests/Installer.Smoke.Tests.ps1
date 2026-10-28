@@ -36,6 +36,17 @@ if ($detectionLog -notmatch 'All runtime detection fixture checks passed') {
 
 $bootstrapLog = Invoke-Setup "$root/installer-output/bootstrap-test.exe" 'bootstrap.log' @("/DIR=`"$target`"")
 if ($bootstrapLog -notmatch 'Bootstrapping x64') { throw 'Runtime bootstrap did not execute' }
+if (Test-Path "$target/coreclr.dll") { throw 'Fresh payload unexpectedly bundles .NET' }
+
+# Reproduce an in-place upgrade from the former self-contained distribution.
+# Fresh installs on an SDK-equipped runner do not expose app-local hostfxr shadowing.
+$legacy = Join-Path $env:RUNNER_TEMP 'MdReader-legacy-publish'
+& dotnet publish "$root/src/MdReader/MdReader.csproj" -c Release -r win-x64 `
+    --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=false -o $legacy
+if ($LASTEXITCODE -ne 0) { throw 'Could not prepare self-contained upgrade fixture' }
+Copy-Item "$legacy/*" $target -Recurse -Force
+if (-not (Test-Path "$target/hostfxr.dll")) { throw 'Upgrade fixture has no app-local hostfxr' }
+# Restore the old payload's framework-dependent config only through setup below.
 foreach ($attempt in 1..2) {
     $log = Invoke-Setup $installer "install-$attempt.log" @("/DIR=`"$target`"")
     if ($log -notmatch 'Desktop Runtime already installed; skipping download') {
@@ -44,7 +55,7 @@ foreach ($attempt in 1..2) {
     foreach ($file in @('MdReader.exe', 'MdReader.runtimeconfig.json', 'Assets/Mermaid/mermaid.min.js')) {
         if (-not (Test-Path "$target/$file")) { throw "Missing installed file: $file" }
     }
-    if (Test-Path "$target/coreclr.dll") { throw 'Payload unexpectedly bundles .NET' }
+    if (Test-Path "$target/hostfxr.dll") { throw 'Upgrade left an app-local runtime loader behind' }
     $configuration = Get-Content "$target/MdReader.runtimeconfig.json" -Raw | ConvertFrom-Json
     if ($configuration.runtimeOptions.includedFrameworks -or
         -not ($configuration.runtimeOptions.frameworks | Where-Object name -EQ 'Microsoft.WindowsDesktop.App')) {
@@ -53,8 +64,12 @@ foreach ($attempt in 1..2) {
     $productVersion = (Get-Item "$target/MdReader.exe").VersionInfo.ProductVersion.Split('+')[0]
     if ($productVersion -ne $Version) { throw "Installed version $productVersion does not match $Version" }
     $runtimes = & "$env:ProgramFiles/dotnet/dotnet.exe" --list-runtimes
-    if ($LASTEXITCODE -ne 0 -or -not ($runtimes -match '^Microsoft.WindowsDesktop.App 9\.0\.\d+ ')) {
-        throw 'Required x64 Desktop Runtime is missing'
+    if ($LASTEXITCODE -ne 0) { throw 'Could not query x64 runtimes' }
+    foreach ($framework in $configuration.runtimeOptions.frameworks) {
+        $name = [regex]::Escape($framework.name)
+        if (-not ($runtimes -match "^$name 9\.0\.\d+ ")) {
+            throw "Required x64 $($framework.name) 9.0.x runtime is missing"
+        }
     }
 }
 

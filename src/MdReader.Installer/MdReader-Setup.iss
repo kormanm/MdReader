@@ -3,7 +3,7 @@
 
 #define MyAppName "MdReader"
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.2"
+  #define MyAppVersion "1.2.3"
 #endif
 #define MyAppPublisher "MdReader"
 #define MyAppURL "https://github.com/kormanm/MdReader"
@@ -58,6 +58,12 @@ Source: "..\MdReader\app.ico"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+
+[InstallDelete]
+; Old self-contained installs leave a local hostfxr. Apphost prioritizes it and
+; then looks for shared frameworks under {app}, hiding the installed global .NET.
+; Remove only this known runtime-owned loader, not arbitrary user files.
+Type: files; Name: "{app}\hostfxr.dll"
 
 [Registry]
 ; File associations for .md files
@@ -172,8 +178,10 @@ begin
     Exit;
   end;
   if not DesktopRuntimeInstalled then begin
-    Result := 'The x64 .NET 9 Desktop Runtime was not detected after installation. ' +
-      'Restart Windows if requested, then run MdReader setup again.';
+    Result := 'The x64 .NET 9 installation is incomplete. Both Microsoft.NETCore.App ' +
+      'and Microsoft.WindowsDesktop.App 9.0.x must be present in the same runtime location. ' +
+      'See the setup log for the missing framework and runtime path. Repair the x64 ' +
+      '.NET 9 Desktop Runtime, restart Windows if requested, and run setup again.';
     Exit;
   end;
   RuntimeRestartRequired := ExitCode = 3010;

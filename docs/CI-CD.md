@@ -16,6 +16,9 @@ release input and tag must match it. Release only from a commit merged into main
   post-install detection even if the runner already has .NET 9. It then runs the
   production installer twice, requiring runtime reuse without another download,
   verifies the installed version and assets, starts the app, and uninstalls it.
+- Before testing the production upgrade it overlays an actual self-contained
+  publish, reproducing the previous distribution. Setup must remove its app-local
+  `hostfxr.dll`; otherwise apphost ignores global .NET and reports missing runtimes.
 - Production installers do not expose the forced-bootstrap switch. The test
   executable is excluded from release artifacts.
 - Setup logs are retained as `installer-diagnostics` even if the smoke suite fails.
@@ -43,7 +46,9 @@ publish directory to Inno Setup. Publish output is cleaned before each build.
 
 Runtime detection reads x64 `InstallLocation` in the 32-bit registry view, matching
 the .NET host, then checks stable 9.0.x Desktop framework directories and WPF files.
-It also checks the standard x64 Program Files location. Native fixture tests use
+The registered root must contain both base `Microsoft.NETCore.App` and Desktop
+frameworks; frameworks from separate roots cannot satisfy the check. When no root
+is registered it checks the standard x64 Program Files location. Native fixture tests use
 the exact detection include compiled into production setup. Signature
 verification requires Windows Authenticode trust plus Microsoft organization,
 using the modules shipped with the PowerShell engine doing the verification.
