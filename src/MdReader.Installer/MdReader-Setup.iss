@@ -43,6 +43,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "fileassoc"; Description: "Associate .md and .markdown files with {#MyAppName}"; GroupDescription: "File associations:"; Flags: checkedonce
 
 [Files]
+; Trusted local verifier extracted only for prerequisite verification.
+Source: "Verify-RuntimeSignature.ps1"; Flags: dontcopy
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 ; Framework-dependent application; PrepareToInstall installs the shared runtime if needed.
 Source: "..\MdReader\bin\Release\net9.0-windows\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -112,21 +114,23 @@ end;
 
 function HasMicrosoftSignature(const FileName: String): Boolean;
 var
-  Command, EscapedPath: String;
+  Command, LogPath: String;
+  Details: AnsiString;
   ExitCode: Integer;
 begin
-  EscapedPath := FileName;
-  StringChangeEx(EscapedPath, '''', '''''', True);
-  Command := '-NoProfile -NonInteractive -Command "' +
-    '$s = Get-AuthenticodeSignature -LiteralPath ''' + EscapedPath + '''; ' +
-    'if ($s.Status -eq ''Valid'' -and $null -ne $s.SignerCertificate -and ' +
-    '$s.SignerCertificate.GetNameInfo(' +
-    '[System.Security.Cryptography.X509Certificates.X509NameType]::SimpleName, $false) ' +
-    '-eq ''Microsoft Corporation'') { exit 0 }; exit 1"';
+  ExtractTemporaryFile('Verify-RuntimeSignature.ps1');
+  LogPath := ExpandConstant('{tmp}\runtime-signature.log');
+  { ExecutionPolicy is scoped to this child process for our bundled local script.
+    The script still requires a trusted, valid Authenticode signature. }
+  Command := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File ' +
+    AddQuotes(ExpandConstant('{tmp}\Verify-RuntimeSignature.ps1')) +
+    ' -InstallerPath ' + AddQuotes(FileName) + ' -LogPath ' + AddQuotes(LogPath);
   Result := False;
   if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
     Command, '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then
     Result := ExitCode = 0;
+  if LoadStringFromFile(LogPath, Details) then Log('Runtime signature verification: ' + Details);
+  if not Result then Log(Format('Runtime signature verification failed (process/error code %d).', [ExitCode]));
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;

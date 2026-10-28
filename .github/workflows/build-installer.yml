@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/MdReader/**'
       - 'src/MdReader.Installer/**'
+      - 'tests/Verify-RuntimeSignature.Tests.ps1'
       - '.github/workflows/build-installer.yml'
   push:
     tags:
@@ -66,6 +67,10 @@ jobs:
       run: |
         choco install innosetup -y
       shell: pwsh
+
+    - name: Test runtime publisher verification
+      shell: pwsh
+      run: ./tests/Verify-RuntimeSignature.Tests.ps1
 
     - name: Build installer
       run: >
