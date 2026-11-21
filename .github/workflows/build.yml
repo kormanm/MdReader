@@ -13,6 +13,9 @@ jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: write   # to delete old artifacts
     
     steps:
     - uses: actions/checkout@v4
@@ -57,3 +60,13 @@ jobs:
       with:
         name: MdReader-win-x64
         path: src/MdReader/bin/Release/net9.0-windows/win-x64/publish/
+        retention-days: 7
+
+    # Artifact storage is shared by the whole account: keep only the 2 newest build outputs.
+    - name: Keep only the 2 newest artifacts
+      if: always()
+      continue-on-error: true
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: ./.github/scripts/prune-artifacts.sh '^MdReader-win-x64$' 2
