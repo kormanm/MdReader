@@ -1,0 +1,73 @@
+name: Artifact retention
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/retention/prune-artifacts.cjs'
+      - '.github/retention/prune-artifacts.test.cjs'
+      - '.github/workflows/artifact-retention.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/retention/prune-artifacts.cjs'
+      - '.github/retention/prune-artifacts.test.cjs'
+      - '.github/workflows/artifact-retention.yml'
+  workflow_run:
+    workflows: ["Build","Build Installer"]
+    types: [completed]
+  schedule:
+    - cron: '13 4 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Preview cleanup without deleting artifacts'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: artifact-retention-${{ github.event_name == 'pull_request' && github.ref || 'cleanup' }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test retention boundaries
+        run: node --test .github/retention/prune-artifacts.test.cjs
+
+  prune:
+    needs: validate
+    if: github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      # Never check out the triggering build/PR: cleanup runs trusted default-branch code.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: Keep current build plus two previous builds
+        uses: actions/github-script@v7
+        env:
+          DRY_RUN: ${{ inputs.dry_run || false }}
+          ARTIFACT_FAMILIES: >-
+            [{"pattern":"^MdReaderSetup-","family":"installer"},{"pattern":"^installer-diagnostics$","family":"installer-diagnostics"},{"pattern":"^MdReader-win-x64$","family":"application"}]
+        with:
+          script: |
+            const { pruneArtifacts } = require('./.github/retention/prune-artifacts.cjs');
+            await pruneArtifacts({
+              github, context, core,
+              rules: JSON.parse(process.env.ARTIFACT_FAMILIES),
+              dryRun: process.env.DRY_RUN === 'true'
+            });
